@@ -1,0 +1,5 @@
+{
+  "name": "Contador Pro Analytics",
+  "description": "Herramienta de análisis financiero local para contadores. Procesa archivos CSV de compras y ventas para visualizar KPIs, tendencias y estadísticas de proveedores sin enviar datos a la nube.",
+  "requestFramePermissions": []
+}
