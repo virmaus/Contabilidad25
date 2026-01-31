@@ -1,5 +1,6 @@
 
-import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, PayrollEntry } from '../types';
+// Added missing PayrollEntry import
+import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, CompanyConfig, PayrollEntry } from '../types';
 import { calculateVaR } from './financialCalculations';
 
 const detectSeparator = (line: string): string => {
@@ -28,12 +29,12 @@ const parseDateString = (dateStr: string): string => {
 };
 
 const defaultMeta: CompanyMeta = {
-  razonSocial: "EMPRESA ANÁLISIS DIGITAL",
-  rut: "77.123.456-0",
-  direccion: "DIRECCIÓN MANUAL USUARIO",
-  comuna: "SANTIAGO",
-  giro: "SERVICIOS CONTABLES",
-  periodo: "EJERCICIO 2025"
+  razonSocial: "EMPRESA NO DEFINIDA",
+  rut: "00.000.000-0",
+  direccion: "SIN DIRECCIÓN",
+  comuna: "SIN COMUNA",
+  giro: "SIN GIRO",
+  periodo: "PERIODO NO DEFINIDO"
 };
 
 export const parseCSV = (csvText: string, filename: string): any[] => {
@@ -44,7 +45,6 @@ export const parseCSV = (csvText: string, filename: string): any[] => {
   const separator = detectSeparator(lines[headerIndex]);
   const headers = lines[headerIndex].split(separator).map(h => normalizeHeader(h.trim()));
   
-  // Detect Payroll Centralization
   if (headers.includes('sueldobase') || headers.includes('costoempresa') || filename.toLowerCase().includes('centralizacion')) {
     return [parsePayrollCSV(lines.slice(headerIndex), headers, separator)];
   }
@@ -63,6 +63,7 @@ const findHeaderRow = (lines: string[]): number => {
   return 0;
 };
 
+// Fix: Now uses the imported PayrollEntry type
 const parsePayrollCSV = (lines: string[], headers: string[], separator: string): PayrollEntry => {
   const getVal = (name: string, row: string[]) => {
     const idx = headers.indexOf(normalizeHeader(name));
@@ -70,7 +71,6 @@ const parsePayrollCSV = (lines: string[], headers: string[], separator: string):
     return parseFloat(row[idx]?.replace(/\./g, '').replace(',', '.')) || 0;
   };
 
-  // Aggregating all rows (usually payroll exports have one row per employee or one summary row)
   let totals: PayrollEntry = {
     periodo: new Date().toISOString().substring(0, 7),
     sueldoBase: 0, gratificacion: 0, leyesSociales: 0, sis: 0,
@@ -144,14 +144,13 @@ const parseTransactionCSV = (lines: string[], headers: string[], separator: stri
   }).filter((t): t is Transaction => t !== null);
 };
 
-export const processTransactions = (data: any[], vouchers: Voucher[] = [], accounts: Account[] = []): KpiStats => {
+export const processTransactions = (data: any[], vouchers: Voucher[] = [], accounts: Account[] = [], company?: CompanyConfig | null): KpiStats => {
   const txs = data.filter(d => 'type' in d && d.type !== 'remuneracion') as Transaction[];
   const balanceFromFile = data.filter(d => 'activo' in d) as BalanceAccount[];
   const payroll = data.find(d => 'costoEmpresa' in d) as PayrollEntry | undefined;
 
   let ts = 0, tp = 0;
   const timeMap = new Map<string, { sales: number; purchases: number }>();
-  // Calculate top providers list
   const providersMap = new Map<string, { rut: string; razonSocial: string; amount: number; type: TransactionType }>();
 
   txs.forEach(t => {
@@ -165,7 +164,6 @@ export const processTransactions = (data: any[], vouchers: Voucher[] = [], accou
       timeMap.set(month, curr);
     }
 
-    // Accumulate for top providers
     const pKey = `${t.rut}-${t.type}`;
     const p = providersMap.get(pKey) || { rut: t.rut, razonSocial: t.razonSocial, amount: 0, type: t.type };
     p.amount += t.montoTotal;
@@ -180,18 +178,26 @@ export const processTransactions = (data: any[], vouchers: Voucher[] = [], accou
     .map(([dateLabel, v]) => ({ dateLabel, sales: v.sales, purchases: v.purchases, net: v.sales - v.purchases }))
     .sort((a, b) => a.dateLabel.localeCompare(b.dateLabel));
 
+  const companyMeta: CompanyMeta = company ? {
+    razonSocial: company.razonSocial,
+    rut: company.rut,
+    direccion: company.direccion,
+    comuna: company.comuna,
+    giro: company.giro,
+    periodo: company.periodo
+  } : defaultMeta;
+
   return {
     totalAmount: ts - tp,
     totalSales: ts,
     totalPurchases: tp,
     totalTransactions: txs.length + vouchers.length,
     uniqueProviders: new Set(txs.map(t => t.rut)).size,
-    // Fix: Removed 'topProvider: null' as it does not exist in KpiStats interface
     history,
     topProvidersList,
     isBalanceFile: balanceFromFile.length > 0,
     balance8Columns: balanceFromFile.length > 0 ? balanceFromFile : generateBalance(txs, vouchers),
-    companyMeta: defaultMeta,
+    companyMeta,
     vouchers,
     accounts,
     payrollSummary: payroll,

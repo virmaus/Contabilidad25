@@ -3,17 +3,31 @@ import React from 'react';
 import { Transaction, KpiStats } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
 import { StatsCard } from './StatsCard';
-import { ShoppingCart, TrendingUp, Scale, LayoutDashboard, Database, ArrowRight } from 'lucide-react';
+import { 
+  ShoppingCart, 
+  TrendingUp, 
+  Scale, 
+  LayoutDashboard, 
+  Database, 
+  ArrowRight, 
+  Building2, 
+  AlertTriangle, 
+  Trash2,
+  Sparkles
+} from 'lucide-react';
 import { Charts } from './Charts';
 import { DataTable } from './DataTable';
 
 interface DashboardProps {
   data: Transaction[];
   kpis: KpiStats;
-  onUpdateData?: (newData: any[]) => void;
+  onClearDemo?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ data, kpis, onClearDemo }) => {
+  // Detector de modo demo (asumiendo que los datos de ejemplo tienen IDs específicos o RUT de demo)
+  const isDemoMode = data.some(t => t.id.includes('sample-')) && data.length > 0;
+
   if (data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
@@ -23,7 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
           </div>
           <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Panel de Control Vacío</h2>
           <p className="text-slate-500 text-sm leading-relaxed">
-            No se han detectado movimientos contables en la base de datos local. 
+            No se han detectado movimientos contables en la base de datos local para esta empresa. 
             Para comenzar el análisis, diríjase al menú superior:
           </p>
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-center gap-3 text-blue-700 font-bold text-sm">
@@ -42,7 +56,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Resumen Estadístico Simplificado */}
+      {/* Banner de Modo Demostración */}
+      {isDemoMode && (
+        <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-white/20 p-2 rounded-lg">
+               <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="font-black uppercase text-xs tracking-wider">Modo de Demostración Activo</p>
+              <p className="text-xs opacity-90">Estás visualizando datos de ejemplo. Cargue sus propios archivos SII para ver su realidad financiera.</p>
+            </div>
+          </div>
+          <button 
+            onClick={onClearDemo}
+            className="bg-white text-orange-600 px-4 py-2 rounded-xl text-xs font-black shadow-md hover:bg-orange-50 transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> LIMPIAR DATOS DE EJEMPLO
+          </button>
+        </div>
+      )}
+
+      {/* Título de la Empresa Activa */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">
+              {kpis.companyMeta.razonSocial}
+            </h1>
+            {!isDemoMode && <Sparkles className="w-5 h-5 text-blue-500" />}
+          </div>
+          <div className="flex items-center gap-3 text-slate-500 font-bold text-xs uppercase tracking-widest">
+            <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> RUT: {kpis.companyMeta.rut}</span>
+            <span className="w-1 h-1 rounded-full bg-slate-300" />
+            <span>{kpis.companyMeta.periodo}</span>
+          </div>
+        </div>
+        <div className="bg-white px-6 py-3 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+            <div className="text-right">
+                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Total Registros</p>
+                <p className="text-xl font-black text-slate-900 leading-none">{kpis.totalTransactions}</p>
+            </div>
+            <div className="w-px h-8 bg-slate-100" />
+            <div className="text-right">
+                <p className="text-[9px] font-black text-slate-400 uppercase leading-none mb-1">Proveedores Únicos</p>
+                <p className="text-xl font-black text-blue-600 leading-none">{kpis.uniqueProviders}</p>
+            </div>
+        </div>
+      </div>
+
+      {/* Resumen Estadístico */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatsCard
           title="Ventas Totales"

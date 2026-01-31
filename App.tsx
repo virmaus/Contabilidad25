@@ -118,7 +118,6 @@ const App: React.FC = () => {
             saveData('transactions', sampleTxs)
           ]);
 
-          // Recargar variables locales con los datos sembrados
           comp = [SAMPLE_COMPANY];
           accs = SAMPLE_ACCOUNTS;
           txs = sampleTxs;
@@ -145,12 +144,8 @@ const App: React.FC = () => {
   }, []);
 
   const kpis: KpiStats = useMemo(() => {
-    const stats = processTransactions(transactions, vouchers, accounts);
-    if (payrollData.length > 0) {
-      stats.payrollSummary = payrollData[0];
-    }
-    return stats;
-  }, [transactions, vouchers, accounts, payrollData]);
+    return processTransactions(transactions, vouchers, accounts, company);
+  }, [transactions, vouchers, accounts, company]);
 
   const handleUpdateCompany = async (conf: CompanyConfig) => {
     await saveData('company', conf);
@@ -188,6 +183,14 @@ const App: React.FC = () => {
     window.location.reload();
   };
 
+  const handleClearDemoData = async () => {
+    if (confirm("¿Estás seguro de que quieres eliminar los datos de demostración? Esto dejará la base de datos vacía pero mantendrá tu configuración de empresa.")) {
+      const cleanTxs: Transaction[] = [];
+      await saveData('transactions', cleanTxs);
+      setTransactions(cleanTxs);
+    }
+  };
+
   if (isDBLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
@@ -200,7 +203,7 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
-    if (activeMainTab === 'dashboard') return <Dashboard data={transactions} kpis={kpis} onUpdateData={handleUpdateTransactions} />;
+    if (activeMainTab === 'dashboard') return <Dashboard data={transactions} kpis={kpis} onClearDemo={handleClearDemoData} />;
     
     if (activeMainTab === 'archivo') {
       if (activeSubTab === 'empresa') return <CompanyConfigForm config={company} onSave={handleUpdateCompany} />;
@@ -228,12 +231,12 @@ const App: React.FC = () => {
       return <ConciliacionMensual transactions={transactions} kpis={kpis} />;
     }
 
-    return <Dashboard data={transactions} kpis={kpis} onUpdateData={handleUpdateTransactions} />;
+    return <Dashboard data={transactions} kpis={kpis} onClearDemo={handleClearDemoData} />;
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100">
-      <Header onReset={() => setShowResetModal(true)} />
+      <Header onReset={() => setShowResetModal(true)} company={company} />
       
       <nav className="bg-slate-800 text-slate-200 border-b border-slate-700 no-print sticky top-16 z-40">
         <div className="container mx-auto px-4 flex">

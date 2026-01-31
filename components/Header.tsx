@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, RefreshCw, MonitorDown, HelpCircle } from 'lucide-react';
+import { Calculator, RefreshCw, MonitorDown, HelpCircle, Building } from 'lucide-react';
+import { CompanyConfig } from '../types';
 
 interface HeaderProps {
   onReset?: () => void;
+  company?: CompanyConfig | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onReset }) => {
+export const Header: React.FC<HeaderProps> = ({ onReset, company }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstallable, setIsInstallable] = useState(false);
 
@@ -32,6 +34,20 @@ export const Header: React.FC<HeaderProps> = ({ onReset }) => {
             <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest">Financial Analytics Suite</span>
           </div>
         </div>
+
+        {/* Indicador de Empresa Activa */}
+        {company && (
+          <div className="hidden lg:flex items-center gap-3 bg-slate-800/50 border border-slate-700 px-4 py-2 rounded-xl">
+             <div className="bg-slate-700 p-1.5 rounded-lg">
+                <Building className="w-4 h-4 text-blue-400" />
+             </div>
+             <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Empresa Activa</span>
+                <span className="text-xs font-black text-white leading-none truncate max-w-[200px]">{company.razonSocial}</span>
+                <span className="text-[9px] font-mono text-blue-400 mt-0.5">{company.rut}</span>
+             </div>
+          </div>
+        )}
         
         <div className="flex items-center gap-3">
           <button className="p-2 text-slate-400 hover:text-white transition-colors">
