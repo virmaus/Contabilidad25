@@ -292,7 +292,7 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
       <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-r-lg flex items-center gap-3">
         <AlertCircle className="w-5 h-5 text-blue-600 shrink-0" />
         <p className="text-xs text-blue-800">
-          <strong>Nota Pro:</strong> Las cuentas no imputables representan niveles de agrupación (Subtotales). Asegúrese de mantener la jerarquía de puntos (ej: 1 -> 1.01 -> 1.01.01) para una correcta visualización del balance.
+          <strong>Nota Pro:</strong> Las cuentas no imputables representan niveles de agrupación (Subtotales). Asegúrese de mantener la jerarquía de puntos (ej: 1 {'->'} 1.01 {'->'} 1.01.01) para una correcta visualización del balance.
         </p>
       </div>
     </div>
