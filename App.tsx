@@ -50,7 +50,8 @@ import {
   RefreshCw,
   LayoutGrid,
   DownloadCloud,
-  Github
+  Github,
+  Sparkles
 } from 'lucide-react';
 
 const APP_VERSION = "1.0.1";
@@ -82,13 +83,14 @@ const App: React.FC = () => {
         const response = await fetch(GITHUB_REPO_URL, { cache: 'no-store' });
         if (response.ok) {
           const remotePackage = await response.json();
+          // Comparación simple de strings de versión
           if (remotePackage.version && remotePackage.version !== APP_VERSION) {
-            console.log(`Nueva versión detectada en GitHub: ${remotePackage.version}`);
+            console.log(`[Update] Nueva versión disponible en GitHub: ${remotePackage.version}`);
             setUpdateAvailable(remotePackage.version);
           }
         }
       } catch (err) {
-        console.warn("No se pudo verificar actualizaciones (posiblemente offline).");
+        console.warn("[Update] No se pudo verificar actualizaciones (posiblemente offline).");
       }
     };
 
@@ -118,7 +120,8 @@ const App: React.FC = () => {
         console.error("Error loading data:", err);
       } finally {
         setIsDBLoading(false);
-        checkUpdates();
+        // Verificar actualizaciones después de cargar los datos locales
+        setTimeout(checkUpdates, 2000);
       }
     };
     loadAll();
@@ -158,6 +161,15 @@ const App: React.FC = () => {
   };
 
   const applyUpdate = () => {
+    // Si estamos en un navegador que soporta Service Workers, intentamos forzar la actualización
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        for (let registration of registrations) {
+          registration.update();
+        }
+      });
+    }
+    // Forzar recarga omitiendo caché del navegador
     window.location.reload();
   };
 
@@ -270,54 +282,69 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
       
-      <footer className="bg-slate-900 border-t border-slate-800 py-3 text-center text-slate-500 text-[10px] no-print flex justify-center items-center gap-6">
-        <div className="flex items-center gap-2">
-            <span className="bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-mono">v{APP_VERSION}</span>
-            <span>Transtecnia Digital PRO</span>
+      <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-slate-500 text-[10px] no-print flex flex-col items-center gap-3">
+        <div className="flex justify-center items-center gap-6">
+          <div className="flex items-center gap-2">
+              <span className="bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-mono font-bold">v{APP_VERSION}</span>
+              <span className="font-semibold tracking-wider">TRANSTECNIA DIGITAL PRO ANALYTICS</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-emerald-500 font-bold bg-emerald-500/5 px-3 py-1 rounded-full border border-emerald-500/10">
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>SISTEMA ACTIVO</span>
+          </div>
+          <a 
+            href="https://github.com/virmaus/Contabilidad25" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="flex items-center gap-1.5 hover:text-white transition-colors group"
+          >
+            <Github className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+            <span className="underline underline-offset-4">GitHub Repository</span>
+          </a>
         </div>
-        <div className="flex items-center gap-1 text-emerald-500 font-bold">
-            <RefreshCw className="w-3 h-3 animate-spin" />
-            <span>App Activa</span>
-        </div>
-        <a 
-          href="https://github.com/virmaus/Contabilidad25" 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="flex items-center gap-1 hover:text-white transition-colors"
-        >
-          <Github className="w-3 h-3" />
-          <span>GitHub Repo</span>
-        </a>
+        <p className="opacity-50">Tecnología de Análisis Local Segura - No se envían datos personales al servidor.</p>
       </footer>
 
-      {/* Modal de Nueva Versión Disponible */}
+      {/* Notificación Flotante de Nueva Versión */}
       {updateAvailable && (
-        <div className="fixed bottom-6 right-6 z-[100] animate-in slide-in-from-bottom-10 duration-500">
-          <div className="bg-white rounded-2xl shadow-2xl border border-blue-200 p-6 max-w-sm flex items-start gap-4 ring-4 ring-blue-500/10">
-            <div className="bg-blue-100 p-3 rounded-full shrink-0">
-               <DownloadCloud className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="space-y-3">
-              <div>
-                <h4 className="font-bold text-slate-900">Actualización Disponible</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Hay una nueva versión <strong>({updateAvailable})</strong> disponible en GitHub con mejoras y correcciones.
+        <div className="fixed bottom-8 right-8 z-[100] animate-in slide-in-from-right-10 duration-500">
+          <div className="bg-white rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-blue-200 p-6 max-w-sm flex flex-col gap-4 ring-4 ring-blue-500/5">
+            <div className="flex items-start gap-4">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-3 rounded-2xl shrink-0 shadow-lg shadow-blue-200">
+                 <DownloadCloud className="w-6 h-6 text-white" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-black text-slate-900 uppercase text-xs tracking-tight">Actualización Disponible</h4>
+                  <span className="bg-blue-100 text-blue-700 text-[9px] font-black px-1.5 py-0.5 rounded">NEW</span>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                  Hemos detectado la versión <strong>{updateAvailable}</strong> en el repositorio oficial de GitHub.
                 </p>
               </div>
-              <div className="flex gap-2">
-                 <button 
-                  onClick={applyUpdate}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg transition-all flex items-center gap-2"
-                 >
-                   <RefreshCw className="w-3.5 h-3.5" /> Actualizar Ahora
-                 </button>
-                 <button 
-                  onClick={() => setUpdateAvailable(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-2 rounded-lg text-xs font-bold transition-all"
-                 >
-                   Más tarde
-                 </button>
-              </div>
+            </div>
+            
+            <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100/50">
+               <div className="flex items-center gap-2 text-blue-700">
+                 <Sparkles className="w-3.5 h-3.5" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Novedades</span>
+               </div>
+               <p className="text-[10px] text-blue-600 mt-1">Mejoras de rendimiento, nuevos reportes contables y parches de seguridad.</p>
+            </div>
+
+            <div className="flex gap-2">
+               <button 
+                onClick={applyUpdate}
+                className="flex-grow bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl text-xs font-black shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2 active:scale-95 group"
+               >
+                 <RefreshCw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" /> INSTALAR AHORA
+               </button>
+               <button 
+                onClick={() => setUpdateAvailable(null)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-3 rounded-xl text-xs font-bold transition-all active:scale-95"
+               >
+                 Ignorar
+               </button>
             </div>
           </div>
         </div>
