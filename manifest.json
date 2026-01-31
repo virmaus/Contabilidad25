@@ -1,7 +1,9 @@
 
 {
-  "short_name": "Contador Pro",
+  "short_name": "ContadorPro",
   "name": "Contador Pro Analytics",
+  "description": "Software contable local-first para análisis financiero.",
+  "id": "/contador-pro-analytics",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/2920/2920349.png",
@@ -17,10 +19,10 @@
     }
   ],
   "start_url": "/",
-  "id": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#0f172a",
   "background_color": "#f8fafc",
-  "orientation": "portrait-primary",
-  "description": "Herramienta de análisis financiero local para contadores."
+  "orientation": "any",
+  "categories": ["finance", "productivity"]
 }
