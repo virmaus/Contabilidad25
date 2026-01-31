@@ -14,6 +14,7 @@ import {
 } from './types';
 import { getAllData, saveData, clearDatabase } from './utils/db';
 import { processTransactions } from './utils/dataProcessing';
+import { SAMPLE_COMPANY, SAMPLE_ACCOUNTS, SAMPLE_UTM, generateSampleTransactions } from './utils/sampleData';
 import { Header } from './components/Header';
 import { Dashboard } from './components/Dashboard';
 import { VoucherManager } from './components/VoucherManager';
@@ -54,7 +55,7 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 const GITHUB_REPO_URL = "https://raw.githubusercontent.com/virmaus/Contabilidad25/main/package.json";
 
 type MainTab = 'dashboard' | 'archivo' | 'movimientos' | 'informes';
@@ -83,7 +84,6 @@ const App: React.FC = () => {
         const response = await fetch(GITHUB_REPO_URL, { cache: 'no-store' });
         if (response.ok) {
           const remotePackage = await response.json();
-          // Comparación simple de strings de versión
           if (remotePackage.version && remotePackage.version !== APP_VERSION) {
             console.log(`[Update] Nueva versión disponible en GitHub: ${remotePackage.version}`);
             setUpdateAvailable(remotePackage.version);
@@ -96,17 +96,35 @@ const App: React.FC = () => {
 
     const loadAll = async () => {
       try {
-        const [comp, accs, vous, txs, centers, taxList, entityList, utmList, payrollList] = await Promise.all([
-          getAllData<CompanyConfig>('company'),
-          getAllData<Account>('accounts'),
-          getAllData<Voucher>('vouchers'),
-          getAllData<Transaction>('transactions'),
-          getAllData<CostCenter>('centers'),
-          getAllData<Tax>('taxes'),
-          getAllData<Entity>('entities'),
-          getAllData<UtmConfig>('utm'),
-          getAllData<PayrollEntry>('payroll')
-        ]);
+        let comp = await getAllData<CompanyConfig>('company');
+        let accs = await getAllData<Account>('accounts');
+        let vous = await getAllData<Voucher>('vouchers');
+        let txs = await getAllData<Transaction>('transactions');
+        let centers = await getAllData<CostCenter>('centers');
+        let taxList = await getAllData<Tax>('taxes');
+        let entityList = await getAllData<Entity>('entities');
+        let utmList = await getAllData<UtmConfig>('utm');
+        let payrollList = await getAllData<PayrollEntry>('payroll');
+
+        // Lógica de Sembrado: Si no hay transacciones ni empresa, inyectamos ejemplos
+        if (txs.length === 0 && comp.length === 0) {
+          console.log("[Seed] DB vacía detectada. Inyectando datos de demostración...");
+          const sampleTxs = generateSampleTransactions();
+          
+          await Promise.all([
+            saveData('company', SAMPLE_COMPANY),
+            saveData('accounts', SAMPLE_ACCOUNTS),
+            saveData('utm', SAMPLE_UTM),
+            saveData('transactions', sampleTxs)
+          ]);
+
+          // Recargar variables locales con los datos sembrados
+          comp = [SAMPLE_COMPANY];
+          accs = SAMPLE_ACCOUNTS;
+          txs = sampleTxs;
+          utmList = SAMPLE_UTM;
+        }
+
         if (comp.length) setCompany(comp[0]);
         setAccounts(accs);
         setVouchers(vous);
@@ -120,7 +138,6 @@ const App: React.FC = () => {
         console.error("Error loading data:", err);
       } finally {
         setIsDBLoading(false);
-        // Verificar actualizaciones después de cargar los datos locales
         setTimeout(checkUpdates, 2000);
       }
     };
@@ -161,7 +178,6 @@ const App: React.FC = () => {
   };
 
   const applyUpdate = () => {
-    // Si estamos en un navegador que soporta Service Workers, intentamos forzar la actualización
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
         for (let registration of registrations) {
@@ -169,7 +185,6 @@ const App: React.FC = () => {
         }
       });
     }
-    // Forzar recarga omitiendo caché del navegador
     window.location.reload();
   };
 
