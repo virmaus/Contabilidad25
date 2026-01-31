@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Transaction, 
@@ -54,10 +53,11 @@ import {
   LayoutGrid,
   DownloadCloud,
   Github,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from 'lucide-react';
 
-const APP_VERSION = "1.0.3";
+const APP_VERSION = "1.0.4";
 
 type MainTab = 'dashboard' | 'archivo' | 'movimientos' | 'informes';
 
@@ -92,27 +92,22 @@ const App: React.FC = () => {
     const init = async () => {
       let comps = await getAllData<CompanyConfig>('companies');
       
-      // Seed Demo if empty
+      // Seed Demo if empty (SOLO SI ES LA PRIMERA VEZ ABSOLUTA)
       if (comps.length === 0) {
         console.log("[Seed] No companies found. Creating Demo Company...");
         await saveData('companies', SAMPLE_COMPANY);
-        
-        // Seed associated data for demo
         const demoTxs = generateSampleTransactions().map(t => ({ ...t, companyId: SAMPLE_COMPANY.id }));
         const demoAccs = SAMPLE_ACCOUNTS.map(a => ({ ...a, companyId: SAMPLE_COMPANY.id }));
         const demoUtm = SAMPLE_UTM.map(u => ({ ...u, companyId: SAMPLE_COMPANY.id }));
-        
         await Promise.all([
           saveData('transactions', demoTxs),
           saveData('accounts', demoAccs),
           saveData('utm', demoUtm)
         ]);
-        
         comps = [SAMPLE_COMPANY];
       }
       
       setCompanies(comps);
-      
       const lastId = localStorage.getItem('selectedCompanyId');
       if (lastId && comps.some(c => c.id === lastId)) {
         setCurrentCompanyId(lastId);
@@ -128,7 +123,6 @@ const App: React.FC = () => {
   // Load Company Specific Data when CompanyId changes
   useEffect(() => {
     if (!currentCompanyId) return;
-
     const loadData = async () => {
       setIsDBLoading(true);
       try {
@@ -142,9 +136,7 @@ const App: React.FC = () => {
           getAllData<UtmConfig>('utm'),
           getAllData<PayrollEntry>('payroll')
         ]);
-
         const filter = (items: any[]) => items.filter(i => i.companyId === currentCompanyId);
-
         setAccounts(filter(allAccs));
         setVouchers(filter(allVous));
         setTransactions(filter(allTxs));
@@ -189,7 +181,6 @@ const App: React.FC = () => {
   };
 
   const handleUpdateTransactions = async (txs: Transaction[]) => {
-    // Asegurar que todas tengan el companyId actual
     const tagged = txs.map(t => ({ ...t, companyId: currentCompanyId }));
     await saveData('transactions', tagged);
     setTransactions(tagged);
@@ -205,7 +196,7 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="text-center space-y-4">
           <Loader2 className="w-12 h-12 text-blue-500 animate-spin mx-auto" />
-          <p className="text-blue-400 font-bold animate-pulse uppercase tracking-widest text-xs">Cargando datos de {currentCompany?.razonSocial || 'Empresa'}...</p>
+          <p className="text-blue-400 font-bold animate-pulse uppercase tracking-widest text-xs">Protegiendo persistencia de {currentCompany?.razonSocial || 'Datos'}...</p>
         </div>
       </div>
     );
@@ -213,7 +204,6 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (activeMainTab === 'dashboard') return <Dashboard data={transactions} kpis={kpis} />;
-    
     if (activeMainTab === 'archivo') {
       if (activeSubTab === 'empresa') return <CompanyConfigForm config={currentCompany} onSave={handleUpdateCompany} />;
       if (activeSubTab === 'convergencia') return <ConvergenciaSII currentTransactions={transactions} onUpdateTransactions={handleUpdateTransactions} companyId={currentCompanyId} />;
@@ -229,7 +219,6 @@ const App: React.FC = () => {
       }} />;
       return <div className="p-8 text-center text-slate-400">Seleccione una opción del menú Archivo</div>;
     }
-
     if (activeMainTab === 'movimientos') {
       return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={async (v) => { 
         const tagged = { ...v, companyId: currentCompanyId };
@@ -237,7 +226,6 @@ const App: React.FC = () => {
         setVouchers(prev => [...prev, tagged]); 
       }} />;
     }
-
     if (activeMainTab === 'informes') {
       if (activeSubTab === 'diario') return <LibroDiario transactions={transactions} kpis={kpis} />;
       if (activeSubTab === 'mayor') return <LibroMayor transactions={transactions} />;
@@ -247,7 +235,6 @@ const App: React.FC = () => {
       if (activeSubTab === 'honorarios') return <LibroHonorarios transactions={transactions} companyId={currentCompanyId} onUpdate={handleUpdateTransactions} />;
       return <ConciliacionMensual transactions={transactions} kpis={kpis} />;
     }
-
     return <Dashboard data={transactions} kpis={kpis} />;
   };
 
@@ -292,12 +279,21 @@ const App: React.FC = () => {
         {renderContent()}
       </main>
       
-      <footer className="bg-slate-900 border-t border-slate-800 py-4 text-center text-slate-500 text-[10px] no-print">
-        <div className="flex justify-center items-center gap-6 mb-2">
-            <span className="bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-mono font-bold">v{APP_VERSION}</span>
-            <span className="font-semibold tracking-wider">Aislamiento de Datos Activo - Multi-Empresa</span>
+      <footer className="bg-slate-900 border-t border-slate-800 py-6 text-center text-slate-500 text-[10px] no-print">
+        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex items-center gap-6">
+              <span className="bg-slate-800 px-3 py-1 rounded text-blue-400 font-mono font-bold border border-slate-700">v{APP_VERSION}</span>
+              <div className="flex items-center gap-2 text-emerald-500 font-bold uppercase tracking-widest">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Base de Datos Persistente Activa</span>
+              </div>
+          </div>
+          <div className="flex items-center gap-4 opacity-70">
+              <p>Tecnología Local-First: Tus datos nunca salen de este navegador.</p>
+              <span className="w-1 h-1 rounded-full bg-slate-700" />
+              <p>Optimizado para IndexedDB Production</p>
+          </div>
         </div>
-        <p className="opacity-50">Tecnología Local Segura - Cada empresa posee su propio contenedor de datos encriptados.</p>
       </footer>
 
       {showCompanySelector && (
