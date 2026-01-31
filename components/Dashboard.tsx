@@ -1,21 +1,49 @@
+
 import React from 'react';
 import { Transaction, KpiStats } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
 import { StatsCard } from './StatsCard';
-import { DollarSign, ShoppingCart, TrendingUp, TrendingDown, Scale } from 'lucide-react';
+import { ShoppingCart, TrendingUp, Scale, LayoutDashboard, Database, ArrowRight } from 'lucide-react';
 import { Charts } from './Charts';
 import { DataTable } from './DataTable';
 
 interface DashboardProps {
   data: Transaction[];
   kpis: KpiStats;
+  onUpdateData?: (newData: any[]) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
+  if (data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
+        <div className="bg-white p-12 rounded-3xl shadow-2xl border border-slate-200 text-center max-w-lg space-y-6">
+          <div className="bg-slate-100 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <LayoutDashboard className="w-10 h-10 text-slate-400" />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Panel de Control Vacío</h2>
+          <p className="text-slate-500 text-sm leading-relaxed">
+            No se han detectado movimientos contables en la base de datos local. 
+            Para comenzar el análisis, diríjase al menú superior:
+          </p>
+          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-center gap-3 text-blue-700 font-bold text-sm">
+            <Database className="w-5 h-5" />
+            <span>Archivo</span>
+            <ArrowRight className="w-4 h-4" />
+            <span>Convergencia SII (Carga)</span>
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-4">
+            Transtecnia Digital Analytics v4.6
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="space-y-8 animate-fade-in">
+      {/* Resumen Estadístico Simplificado */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <StatsCard
           title="Ventas Totales"
           value={formatCurrency(kpis.totalSales)}
@@ -29,53 +57,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
           colorClass="bg-red-500 text-red-600"
         />
         <StatsCard
-          title="Resultado (Ventas - Compras)"
+          title="Resultado Operacional"
           value={formatCurrency(kpis.totalSales - kpis.totalPurchases)}
           icon={Scale}
           colorClass="bg-blue-500 text-blue-600"
         />
-        <StatsCard
-          title="Top 1 Mayor Monto"
-          value={kpis.topProvider ? kpis.topProvider.razonSocial.substring(0, 15) + (kpis.topProvider.razonSocial.length > 15 ? '...' : '') : 'N/A'}
-          subValue={kpis.topProvider ? `${formatCurrency(kpis.topProvider.amount)} (${kpis.topProvider.type})` : '-'}
-          icon={DollarSign}
-          colorClass="bg-amber-500 text-amber-600"
-        />
       </div>
 
-      {/* Main Analysis Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Charts take up 2/3 */}
         <div className="lg:col-span-2 space-y-8">
            <Charts kpis={kpis} />
         </div>
         
-        {/* Top 10 Table take up 1/3 */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
           <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-semibold text-slate-800">Top 10 Mayores Movimientos</h3>
+            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Top 10 Mayores Entidades</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-medium">
-                <tr>
-                  <th className="px-4 py-3">RUT</th>
-                  <th className="px-4 py-3 text-right">Monto</th>
+                <tr className="text-[10px] uppercase">
+                  <th className="px-4 py-3">Razón Social</th>
+                  <th className="px-4 py-3 text-right">Monto Bruto</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {kpis.topProvidersList.map((p) => (
-                  <tr key={`${p.rut}-${p.type}`} className="hover:bg-slate-50">
+                  <tr key={`${p.rut}-${p.type}`} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2">
-                        <div className="font-medium text-slate-700 flex items-center gap-2">
-                            {p.razonSocial}
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${p.type === 'venta' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        <div className="font-bold text-slate-700 flex items-center gap-2 text-xs">
+                            {p.razonSocial.substring(0, 18)}
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-black ${p.type === 'venta' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                 {p.type === 'venta' ? 'V' : 'C'}
                             </span>
                         </div>
-                        <div className="text-xs text-slate-400">{p.rut}</div>
+                        <div className="text-[9px] text-slate-400 font-mono">{p.rut}</div>
                     </td>
-                    <td className="px-4 py-2 font-medium text-slate-700 text-right">{formatCurrency(p.amount)}</td>
+                    <td className="px-4 py-2 font-mono text-slate-700 text-right text-xs font-bold">{formatCurrency(p.amount)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -84,11 +102,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
         </div>
       </div>
 
-      {/* Detail Data Table */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-            <h3 className="font-semibold text-slate-800 text-lg">Detalle de Transacciones</h3>
-            <span className="text-sm text-slate-500">{data.length} registros</span>
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-tight">Consolidado de Transacciones Procesadas</h3>
+            <span className="text-[10px] font-black text-slate-500 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">
+              {data.length} registros en memoria
+            </span>
         </div>
         <DataTable transactions={data} />
       </div>
