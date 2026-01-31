@@ -6,10 +6,11 @@ import { Plus, Trash2, Save, FileSpreadsheet, CheckCircle2, AlertCircle } from '
 
 interface Props {
   vouchers: Voucher[];
+  companyId: string;
   onAddVoucher: (v: Voucher) => void;
 }
 
-export const VoucherManager: React.FC<Props> = ({ vouchers, onAddVoucher }) => {
+export const VoucherManager: React.FC<Props> = ({ vouchers, companyId, onAddVoucher }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [tipo, setTipo] = useState<VoucherType>('Traspaso');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
@@ -26,6 +27,7 @@ export const VoucherManager: React.FC<Props> = ({ vouchers, onAddVoucher }) => {
   const handleSave = () => {
     if (!isBalanced) return;
     const newVoucher: Voucher = {
+      companyId,
       id: `vou-${Date.now()}`,
       numero: vouchers.length + 1,
       fecha,

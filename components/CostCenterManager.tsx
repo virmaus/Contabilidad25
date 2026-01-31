@@ -5,14 +5,15 @@ import { Layers, Plus, Save, Trash2, Check, X, Edit2, Undo2, AlertCircle } from 
 
 interface Props {
   centers: CostCenter[];
+  companyId: string;
   onSave: (centers: CostCenter[]) => void;
 }
 
-export const CostCenterManager: React.FC<Props> = ({ centers, onSave }) => {
+export const CostCenterManager: React.FC<Props> = ({ centers, companyId, onSave }) => {
   const [localCenters, setLocalCenters] = useState<CostCenter[]>(centers.length > 0 ? centers : [
-    { id: 'cc-1', codigo: '100', nombre: 'ADMINISTRACION' },
-    { id: 'cc-2', codigo: '200', nombre: 'OPERACIONES' },
-    { id: 'cc-3', codigo: '300', nombre: 'COMERCIAL' },
+    { id: 'cc-1', companyId, codigo: '100', nombre: 'ADMINISTRACION' },
+    { id: 'cc-2', companyId, codigo: '200', nombre: 'OPERACIONES' },
+    { id: 'cc-3', companyId, codigo: '300', nombre: 'COMERCIAL' },
   ]);
 
   const [newCenter, setNewCenter] = useState<Partial<CostCenter>>({
@@ -30,6 +31,7 @@ export const CostCenterManager: React.FC<Props> = ({ centers, onSave }) => {
       return;
     }
     const created: CostCenter = {
+      companyId,
       id: `cc-${Date.now()}`,
       codigo: newCenter.codigo,
       nombre: newCenter.nombre.toUpperCase()

@@ -19,10 +19,11 @@ import { FileUploader } from './FileUploader';
 
 interface Props {
   kpis: KpiStats;
+  companyId: string;
   onUpdatePayroll: (data: PayrollEntry) => void;
 }
 
-export const PayrollReconciliation: React.FC<Props> = ({ kpis, onUpdatePayroll }) => {
+export const PayrollReconciliation: React.FC<Props> = ({ kpis, companyId, onUpdatePayroll }) => {
   const { payrollSummary, balance8Columns, accounts } = kpis;
   const [isUploading, setIsUploading] = useState(false);
   
@@ -34,7 +35,8 @@ export const PayrollReconciliation: React.FC<Props> = ({ kpis, onUpdatePayroll }
     setIsUploading(true);
     try {
       const text = await files[0].text();
-      const result = parseCSV(text, files[0].name);
+      // Pass companyId to satisfy PayrollEntry type requirements
+      const result = parseCSV(text, files[0].name, companyId);
       const payroll = result.find(d => 'costoEmpresa' in d) as PayrollEntry | undefined;
       
       if (payroll) {

@@ -37,7 +37,8 @@ const defaultMeta: CompanyMeta = {
   periodo: "PERIODO NO DEFINIDO"
 };
 
-export const parseCSV = (csvText: string, filename: string): any[] => {
+// Added companyId parameter to ensure data is tagged during parsing
+export const parseCSV = (csvText: string, filename: string, companyId: string = ''): any[] => {
   const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
   if (lines.length < 2) return [];
 
@@ -46,13 +47,13 @@ export const parseCSV = (csvText: string, filename: string): any[] => {
   const headers = lines[headerIndex].split(separator).map(h => normalizeHeader(h.trim()));
   
   if (headers.includes('sueldobase') || headers.includes('costoempresa') || filename.toLowerCase().includes('centralizacion')) {
-    return [parsePayrollCSV(lines.slice(headerIndex), headers, separator)];
+    return [parsePayrollCSV(lines.slice(headerIndex), headers, separator, companyId)];
   }
 
   const isBalance = headers.includes('activo') && headers.includes('pasivo');
   if (isBalance) return parseBalanceCSV(lines.slice(headerIndex), headers, separator);
   
-  return parseTransactionCSV(lines.slice(headerIndex), headers, separator, filename);
+  return parseTransactionCSV(lines.slice(headerIndex), headers, separator, filename, companyId);
 };
 
 const findHeaderRow = (lines: string[]): number => {
@@ -63,16 +64,20 @@ const findHeaderRow = (lines: string[]): number => {
   return 0;
 };
 
-// Fix: Now uses the imported PayrollEntry type
-const parsePayrollCSV = (lines: string[], headers: string[], separator: string): PayrollEntry => {
+// Added companyId to ensure PayrollEntry satisfies its type definition
+const parsePayrollCSV = (lines: string[], headers: string[], separator: string, companyId: string = ''): PayrollEntry => {
   const getVal = (name: string, row: string[]) => {
     const idx = headers.indexOf(normalizeHeader(name));
     if (idx === -1) return 0;
     return parseFloat(row[idx]?.replace(/\./g, '').replace(',', '.')) || 0;
   };
 
+  const currentPeriodo = new Date().toISOString().substring(0, 7);
   let totals: PayrollEntry = {
-    periodo: new Date().toISOString().substring(0, 7),
+    // Fix: Added missing 'id' property to satisfy the PayrollEntry interface
+    id: `payroll-${companyId}-${currentPeriodo}-${Date.now()}`,
+    companyId,
+    periodo: currentPeriodo,
     sueldoBase: 0, gratificacion: 0, leyesSociales: 0, sis: 0,
     mutual: 0, impuestoUnico: 0, sueldoLiquido: 0, costoEmpresa: 0
   };
@@ -115,7 +120,8 @@ const parseBalanceCSV = (lines: string[], headers: string[], separator: string):
   return accounts;
 };
 
-const parseTransactionCSV = (lines: string[], headers: string[], separator: string, filename: string): Transaction[] => {
+// Added companyId to ensure Transaction satisfies its type definition
+const parseTransactionCSV = (lines: string[], headers: string[], separator: string, filename: string, companyId: string = ''): Transaction[] => {
   let type: TransactionType = filename.toLowerCase().includes('venta') ? 'venta' : 'compra';
   if (headers.includes('rutcliente')) type = 'venta';
   if (headers.includes('emisor') || filename.toLowerCase().includes('honorarios')) type = 'honorarios';
@@ -133,6 +139,7 @@ const parseTransactionCSV = (lines: string[], headers: string[], separator: stri
     const total = parseFloat(row[idxTotal]?.replace(/\./g, '').replace(',', '.')) || 0;
     if (!total) return null;
     return {
+      companyId,
       id: `tx-${Date.now()}-${i}`,
       fecha: parseDateString(row[idxFecha]?.trim()),
       rut: row[idxRut]?.trim() || 'S/R',

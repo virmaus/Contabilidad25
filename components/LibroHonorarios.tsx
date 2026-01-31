@@ -6,10 +6,11 @@ import { Printer, Plus, Trash2, X, Save, Edit3, Calculator, Receipt, UserRound }
 
 interface Props {
   transactions: Transaction[];
+  companyId: string;
   onUpdate?: (updatedTxs: Transaction[]) => void;
 }
 
-export const LibroHonorarios: React.FC<Props> = ({ transactions, onUpdate }) => {
+export const LibroHonorarios: React.FC<Props> = ({ transactions, companyId, onUpdate }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTx, setNewTx] = useState<Partial<Transaction>>({
     fecha: new Date().toISOString().split('T')[0],
@@ -32,6 +33,7 @@ export const LibroHonorarios: React.FC<Props> = ({ transactions, onUpdate }) => 
   const handleAdd = () => {
     if (!newTx.rut || !newTx.montoTotal || !newTx.fecha) return;
     const tx: Transaction = {
+      companyId,
       id: `tx-hon-${Date.now()}`,
       fecha: newTx.fecha,
       rut: newTx.rut,

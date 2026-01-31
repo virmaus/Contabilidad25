@@ -5,13 +5,14 @@ import { Percent, Plus, Save, Trash2, Check, Edit2, Undo2, Receipt } from 'lucid
 
 interface Props {
   taxes: Tax[];
+  companyId: string;
   onSave: (taxes: Tax[]) => void;
 }
 
-export const TaxManager: React.FC<Props> = ({ taxes, onSave }) => {
+export const TaxManager: React.FC<Props> = ({ taxes, companyId, onSave }) => {
   const [localTaxes, setLocalTaxes] = useState<Tax[]>(taxes.length > 0 ? taxes : [
-    { id: 'tax-iva', nombre: 'IVA CRÉDITO 19%', tasa: 19, tipo: 'IVA', cuentaCodigo: '1.01.05' },
-    { id: 'tax-ret', nombre: 'RETENCIÓN HONORARIOS 13.75%', tasa: 13.75, tipo: 'Retención', cuentaCodigo: '2.01.08' },
+    { id: 'tax-iva', companyId, nombre: 'IVA CRÉDITO 19%', tasa: 19, tipo: 'IVA', cuentaCodigo: '1.01.05' },
+    { id: 'tax-ret', companyId, nombre: 'RETENCIÓN HONORARIOS 13.75%', tasa: 13.75, tipo: 'Retención', cuentaCodigo: '2.01.08' },
   ]);
 
   const [newTax, setNewTax] = useState<Partial<Tax>>({
@@ -27,6 +28,7 @@ export const TaxManager: React.FC<Props> = ({ taxes, onSave }) => {
   const handleAdd = () => {
     if (!newTax.nombre || newTax.tasa === undefined) return;
     const created: Tax = {
+      companyId,
       id: `tax-${Date.now()}`,
       nombre: newTax.nombre.toUpperCase(),
       tasa: newTax.tasa,

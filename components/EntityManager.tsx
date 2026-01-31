@@ -13,7 +13,7 @@ export const EntityManager: React.FC<Props> = ({ entities, onSave }) => {
   const [filter, setFilter] = useState('');
   const [rutToDelete, setRutToDelete] = useState<string | null>(null);
   
-  const [newEntity, setNewEntity] = useState<Entity>({
+  const [newEntity, setNewEntity] = useState<Partial<Entity>>({
     rut: '',
     razonSocial: '',
     giro: '',
@@ -26,7 +26,15 @@ export const EntityManager: React.FC<Props> = ({ entities, onSave }) => {
       alert("El RUT ya existe en el maestro.");
       return;
     }
-    setLocalEntities([...localEntities, { ...newEntity, razonSocial: newEntity.razonSocial.toUpperCase() }]);
+    const created: Entity = {
+      id: `ent-${Date.now()}`,
+      companyId: '', // Will be tagged by App.tsx save logic or saveData prepare
+      rut: newEntity.rut,
+      razonSocial: newEntity.razonSocial.toUpperCase(),
+      giro: newEntity.giro || '',
+      tipo: (newEntity.tipo as any) || 'Cliente'
+    };
+    setLocalEntities([...localEntities, created]);
     setNewEntity({ rut: '', razonSocial: '', giro: '', tipo: 'Cliente' });
   };
 
@@ -109,7 +117,7 @@ export const EntityManager: React.FC<Props> = ({ entities, onSave }) => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((ent) => (
-                <tr key={ent.rut} className="hover:bg-blue-50/30 transition-colors text-slate-700">
+                <tr key={ent.id} className="hover:bg-blue-50/30 transition-colors text-slate-700">
                   <td className="px-6 py-4 font-mono font-bold text-slate-900">{ent.rut}</td>
                   <td className="px-6 py-4 font-medium uppercase">{ent.razonSocial}</td>
                   <td className="px-6 py-4 text-xs text-slate-400">{ent.giro || 'SIN GIRO'}</td>

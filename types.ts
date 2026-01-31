@@ -15,6 +15,8 @@ export interface CompanyConfig {
 }
 
 export interface PayrollEntry {
+  id: string; // Added for IndexedDB
+  companyId: string;
   periodo: string;
   sueldoBase: number;
   gratificacion: number;
@@ -75,6 +77,8 @@ export interface CompanyMeta {
 }
 
 export interface Account {
+  id: string; // Added for IndexedDB
+  companyId: string;
   codigo: string; 
   nombre: string;
   imputable: boolean;
@@ -85,6 +89,8 @@ export interface Account {
 }
 
 export interface Entity {
+  id: string; // Added for IndexedDB
+  companyId: string;
   rut: string;
   razonSocial: string;
   giro: string;
@@ -92,6 +98,7 @@ export interface Entity {
 }
 
 export interface Tax {
+  companyId: string;
   id: string;
   nombre: string;
   tasa: number;
@@ -100,6 +107,7 @@ export interface Tax {
 }
 
 export interface CostCenter {
+  companyId: string;
   id: string;
   codigo: string;
   nombre: string;
@@ -115,6 +123,7 @@ export interface VoucherEntry {
 }
 
 export interface Voucher {
+  companyId: string;
   id: string;
   numero: number;
   fecha: string;
@@ -124,6 +133,7 @@ export interface Voucher {
 }
 
 export interface Transaction {
+  companyId: string;
   id: string;
   fecha: string;
   rut: string;
@@ -139,6 +149,8 @@ export interface Transaction {
 }
 
 export interface UtmConfig {
+  id: string; // Added for IndexedDB
+  companyId: string;
   periodo: string;
   valor: number;
 }

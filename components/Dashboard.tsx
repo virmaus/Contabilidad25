@@ -13,7 +13,8 @@ import {
   Building2, 
   AlertTriangle, 
   Trash2,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 import { Charts } from './Charts';
 import { DataTable } from './DataTable';
@@ -21,24 +22,19 @@ import { DataTable } from './DataTable';
 interface DashboardProps {
   data: Transaction[];
   kpis: KpiStats;
-  onClearDemo?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ data, kpis, onClearDemo }) => {
-  // Detector de modo demo (asumiendo que los datos de ejemplo tienen IDs específicos o RUT de demo)
-  const isDemoMode = data.some(t => t.id.includes('sample-')) && data.length > 0;
-
+export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
   if (data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
         <div className="bg-white p-12 rounded-3xl shadow-2xl border border-slate-200 text-center max-w-lg space-y-6">
-          <div className="bg-slate-100 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <LayoutDashboard className="w-10 h-10 text-slate-400" />
+          <div className="bg-blue-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Layers className="w-10 h-10 text-blue-400" />
           </div>
-          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Panel de Control Vacío</h2>
+          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Empresa sin Datos</h2>
           <p className="text-slate-500 text-sm leading-relaxed">
-            No se han detectado movimientos contables en la base de datos local para esta empresa. 
-            Para comenzar el análisis, diríjase al menú superior:
+            Esta entidad no tiene registros contables. Cargue archivos SII para comenzar el análisis dinámico.
           </p>
           <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center justify-center gap-3 text-blue-700 font-bold text-sm">
             <Database className="w-5 h-5" />
@@ -46,9 +42,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis, onClearDemo })
             <ArrowRight className="w-4 h-4" />
             <span>Convergencia SII (Carga)</span>
           </div>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest pt-4">
-            Transtecnia Digital Analytics v4.6
-          </p>
         </div>
       </div>
     );
@@ -56,27 +49,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis, onClearDemo })
 
   return (
     <div className="space-y-8 animate-fade-in">
-      {/* Banner de Modo Demostración */}
-      {isDemoMode && (
-        <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-2 rounded-lg">
-               <AlertTriangle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="font-black uppercase text-xs tracking-wider">Modo de Demostración Activo</p>
-              <p className="text-xs opacity-90">Estás visualizando datos de ejemplo. Cargue sus propios archivos SII para ver su realidad financiera.</p>
-            </div>
-          </div>
-          <button 
-            onClick={onClearDemo}
-            className="bg-white text-orange-600 px-4 py-2 rounded-xl text-xs font-black shadow-md hover:bg-orange-50 transition-all flex items-center gap-2 whitespace-nowrap"
-          >
-            <Trash2 className="w-3.5 h-3.5" /> LIMPIAR DATOS DE EJEMPLO
-          </button>
-        </div>
-      )}
-
       {/* Título de la Empresa Activa */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
@@ -84,7 +56,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis, onClearDemo })
             <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase leading-none">
               {kpis.companyMeta.razonSocial}
             </h1>
-            {!isDemoMode && <Sparkles className="w-5 h-5 text-blue-500" />}
+            <Sparkles className="w-5 h-5 text-blue-500" />
           </div>
           <div className="flex items-center gap-3 text-slate-500 font-bold text-xs uppercase tracking-widest">
             <span className="flex items-center gap-1"><Building2 className="w-3.5 h-3.5" /> RUT: {kpis.companyMeta.rut}</span>
