@@ -1,3 +1,4 @@
+
 // @ts-ignore - Cargamos sql.js desde CDN para asegurar compatibilidad total en el entorno sandbox
 import initSqlJs from 'https://esm.sh/sql.js@1.12.0';
 
@@ -30,20 +31,18 @@ const idb = {
     });
   },
   set: async (data: Uint8Array): Promise<void> => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const request = indexedDB.open(IDB_NAME, 1);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(IDB_STORE)) {
-          request.result.createObjectStore(IDB_STORE);
-        }
-      };
       request.onsuccess = () => {
         const database = request.result;
         const tx = database.transaction(IDB_STORE, 'readwrite');
         const store = tx.objectStore(IDB_STORE);
-        store.put(data, IDB_KEY);
+        const putReq = store.put(data, IDB_KEY);
+        putReq.onsuccess = () => resolve();
+        putReq.onerror = () => reject(putReq.error);
         tx.oncomplete = () => resolve();
       };
+      request.onerror = () => reject(request.error);
     });
   },
   clear: async (): Promise<void> => {
@@ -63,32 +62,25 @@ export const initSQLite = async (): Promise<any> => {
   if (db) return db;
 
   try {
-    console.log("🛠️ Iniciando carga manual de SQLite Engine...");
+    console.log("🛠️ Iniciando persistencia en disco local (IndexedDB)...");
     
-    // 1. Descargar manualmente el binario WASM para evitar que sql.js use 'fs'
-    // Esto soluciona el error: "[unenv] fs.readFileSync is not implemented yet!"
     const wasmResponse = await fetch(SQL_WASM_URL);
     if (!wasmResponse.ok) throw new Error(`Fallo al descargar WASM: ${wasmResponse.statusText}`);
     const wasmBinary = await wasmResponse.arrayBuffer();
 
-    // 2. Resolver la función de inicialización
     const initFn = typeof initSqlJs === 'function' ? initSqlJs : (initSqlJs as any).default;
     if (typeof initFn !== 'function') {
-      throw new Error("El cargador de sql.js no devolvió una función válida.");
+      throw new Error("Error al inicializar motor SQL.");
     }
 
-    // 3. Inicializar pasando el binario ya cargado
-    const SQL = await initFn({
-      wasmBinary: wasmBinary
-    });
+    const SQL = await initFn({ wasmBinary });
 
-    // 4. Cargar persistencia
     const savedDb = await idb.get();
     if (savedDb) {
-      console.log("📂 Cargando base de datos desde IndexedDB...");
+      console.log("✅ Datos recuperados exitosamente del computador.");
       db = new SQL.Database(savedDb);
     } else {
-      console.log("🆕 Creando nueva instancia de base de datos...");
+      console.log("🆕 Primera ejecución: Creando base de datos local.");
       db = new SQL.Database();
       runInitialMigrations(db);
     }
@@ -102,57 +94,11 @@ export const initSQLite = async (): Promise<any> => {
 
 const runInitialMigrations = (database: any) => {
   database.run(`
-    CREATE TABLE IF NOT EXISTS companies (
-      id TEXT PRIMARY KEY,
-      rut TEXT NOT NULL,
-      razonSocial TEXT NOT NULL,
-      direccion TEXT,
-      comuna TEXT,
-      giro TEXT,
-      periodo TEXT,
-      regimen TEXT
-    );
-    CREATE TABLE IF NOT EXISTS accounts (
-      id TEXT PRIMARY KEY,
-      companyId TEXT NOT NULL,
-      parentId TEXT,
-      codigo TEXT NOT NULL,
-      nombre TEXT NOT NULL,
-      imputable INTEGER DEFAULT 1,
-      tipo TEXT,
-      nivel INTEGER,
-      FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS entities (
-      id TEXT PRIMARY KEY,
-      companyId TEXT NOT NULL,
-      rut TEXT NOT NULL,
-      razonSocial TEXT NOT NULL,
-      giro TEXT,
-      tipo TEXT,
-      FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS vouchers (
-      id TEXT PRIMARY KEY,
-      companyId TEXT NOT NULL,
-      numero INTEGER,
-      fecha TEXT NOT NULL,
-      tipo TEXT,
-      glosaGeneral TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS ledger_entries (
-      id TEXT PRIMARY KEY,
-      voucher_id TEXT NOT NULL,
-      account_id TEXT NOT NULL,
-      entity_id TEXT,
-      glosa TEXT,
-      debe REAL DEFAULT 0,
-      haber REAL DEFAULT 0,
-      FOREIGN KEY(voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
-      FOREIGN KEY(account_id) REFERENCES accounts(id)
-    );
+    CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, rut TEXT, razonSocial TEXT, direccion TEXT, comuna TEXT, giro TEXT, periodo TEXT, regimen TEXT);
+    CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, companyId TEXT, parentId TEXT, codigo TEXT, nombre TEXT, imputable INTEGER, tipo TEXT, nivel INTEGER);
+    CREATE TABLE IF NOT EXISTS entities (id TEXT PRIMARY KEY, companyId TEXT, rut TEXT, razonSocial TEXT, giro TEXT, tipo TEXT);
+    CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT);
+    CREATE TABLE IF NOT EXISTS ledger_entries (id TEXT PRIMARY KEY, voucher_id TEXT, account_id TEXT, entity_id TEXT, glosa TEXT, debe REAL, haber REAL);
   `);
   persistDB();
 };
@@ -162,13 +108,14 @@ export const persistDB = async () => {
   try {
     const data = db.export(); 
     await idb.set(data);
+    console.log("💾 Cambios guardados en el disco del navegador.");
   } catch (e) {
-    console.error("Error al persistir DB:", e);
+    console.error("⚠️ Error al persistir datos:", e);
   }
 };
 
 export const executeQuery = (sql: string, params: any[] = []) => {
-  if (!db) throw new Error("Base de datos no disponible");
+  if (!db) throw new Error("DB no lista");
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const results = [];
@@ -180,9 +127,9 @@ export const executeQuery = (sql: string, params: any[] = []) => {
 };
 
 export const executeRun = (sql: string, params: any[] = []) => {
-  if (!db) throw new Error("Base de datos no disponible");
+  if (!db) throw new Error("DB no lista");
   db.run(sql, params);
-  persistDB();
+  persistDB(); // Guardado automático tras cada ejecución
 };
 
 export const clearFullDatabase = async () => {
