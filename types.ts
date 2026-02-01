@@ -11,21 +11,70 @@ export interface CompanyConfig {
   giro: string;
   periodo: string;
   regimen: 'ProPyme' | 'Transparencia';
-  niveles: number[]; 
+  niveles?: number[];
 }
 
-export interface PayrollEntry {
-  id: string; // Added for IndexedDB
+export interface Account {
+  id: string;
   companyId: string;
-  periodo: string;
-  sueldoBase: number;
-  gratificacion: number;
-  leyesSociales: number;
-  sis: number;
-  mutual: number;
-  impuestoUnico: number;
-  sueldoLiquido: number;
-  costoEmpresa: number;
+  parentId: string | null;
+  codigo: string; 
+  nombre: string;
+  imputable: boolean;
+  tipo: 'Activo' | 'Pasivo' | 'Pérdida' | 'Ganancia';
+  nivel?: number;
+  analisis?: boolean;
+  conciliacion?: boolean;
+  centroCosto?: boolean;
+}
+
+export interface Entity {
+  id: string;
+  companyId: string;
+  rut: string;
+  razonSocial: string;
+  giro: string;
+  tipo: 'Cliente' | 'Proveedor' | 'Ambos';
+}
+
+export interface VoucherEntry {
+  cuenta: string;
+  glosa: string;
+  debe: number;
+  haber: number;
+}
+
+export interface Voucher {
+  id: string;
+  companyId: string;
+  numero: number;
+  fecha: string;
+  tipo: VoucherType;
+  glosaGeneral: string;
+  created_at?: string;
+  entradas: VoucherEntry[];
+}
+
+export interface LedgerEntry {
+  id: string;
+  voucher_id: string;
+  account_id: string;
+  entity_id: string | null;
+  glosa: string;
+  debe: number;
+  haber: number;
+}
+
+export interface Transaction {
+  id: string;
+  companyId: string;
+  fecha: string;
+  rut: string;
+  razonSocial: string;
+  montoNeto: number;
+  montoTotal: number;
+  type: TransactionType;
+  montoRetencion?: number;
 }
 
 export interface BalanceAccount {
@@ -41,32 +90,6 @@ export interface BalanceAccount {
   transactions?: Transaction[];
 }
 
-export interface KpiStats {
-  totalAmount: number;
-  totalSales: number;
-  totalPurchases: number;
-  totalTransactions: number;
-  uniqueProviders: number;
-  payrollSummary?: PayrollEntry;
-  history: { dateLabel: string; sales: number; purchases: number; net: number }[];
-  topProvidersList: { rut: string; razonSocial: string; amount: number; type: TransactionType }[];
-  isBalanceFile: boolean;
-  balance8Columns: BalanceAccount[];
-  companyMeta: CompanyMeta;
-  vouchers: Voucher[];
-  accounts: Account[];
-  advanced: {
-    var: number;
-    tir: number;
-    roe: number;
-    payback: number;
-    totalDepreciation: number;
-    accumulatedProfit: number;
-    liquidez: number;
-    patrimonio: number;
-  };
-}
-
 export interface CompanyMeta {
   razonSocial: string;
   rut: string;
@@ -76,81 +99,56 @@ export interface CompanyMeta {
   periodo: string;
 }
 
-export interface Account {
-  id: string; // Added for IndexedDB
+export interface PayrollEntry {
+  id: string;
   companyId: string;
-  codigo: string; 
-  nombre: string;
-  imputable: boolean;
-  analisis: boolean;
-  conciliacion: boolean;
-  centroCosto: boolean;
-  tipo: 'Activo' | 'Pasivo' | 'Pérdida' | 'Ganancia';
+  periodo: string;
+  sueldoBase: number;
+  gratificacion: number;
+  leyesSociales: number;
+  sis: number;
+  mutual: number;
+  impuestoUnico: number;
+  sueldoLiquido: number;
+  costoEmpresa: number;
 }
 
-export interface Entity {
-  id: string; // Added for IndexedDB
+export interface CostCenter {
+  id: string;
   companyId: string;
-  rut: string;
-  razonSocial: string;
-  giro: string;
-  tipo: 'Cliente' | 'Proveedor' | 'Ambos';
+  codigo: string;
+  nombre: string;
 }
 
 export interface Tax {
-  companyId: string;
   id: string;
+  companyId: string;
   nombre: string;
   tasa: number;
   tipo: 'IVA' | 'Retención' | 'Otro';
   cuentaCodigo: string;
 }
 
-export interface CostCenter {
-  companyId: string;
-  id: string;
-  codigo: string;
-  nombre: string;
-}
-
-export interface VoucherEntry {
-  cuenta: string;
-  glosa: string;
-  debe: number;
-  haber: number;
-  rut?: string;
-  centroCosto?: string;
-}
-
-export interface Voucher {
-  companyId: string;
-  id: string;
-  numero: number;
-  fecha: string;
-  tipo: VoucherType;
-  glosaGeneral: string;
-  entradas: VoucherEntry[];
-}
-
-export interface Transaction {
-  companyId: string;
-  id: string;
-  fecha: string;
-  rut: string;
-  razonSocial: string;
-  montoNeto: number;
-  montoTotal: number;
-  montoRetencion?: number;
-  type: TransactionType;
-  originalDate?: string;
-  glosa?: string;
-  documentoNumero?: string;
-  impuestoMonto?: number;
-}
-
 export interface UtmConfig {
-  id: string; // Added for IndexedDB
-  companyId: string;
+  id?: string;
+  companyId?: string;
   periodo: string;
   valor: number;
+}
+
+export interface KpiStats {
+  totalAmount: number;
+  totalSales: number;
+  totalPurchases: number;
+  totalTransactions: number;
+  uniqueProviders: number;
+  history: { dateLabel: string; sales: number; purchases: number; net: number }[];
+  topProvidersList: { rut: string; razonSocial: string; amount: number; type: TransactionType }[];
+  isBalanceFile?: boolean;
+  balance8Columns: BalanceAccount[];
+  companyMeta: CompanyMeta;
+  vouchers: Voucher[];
+  accounts: Account[];
+  payrollSummary?: PayrollEntry;
+  advanced?: any;
 }

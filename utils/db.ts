@@ -1,133 +1,91 @@
 
-import { Transaction, Voucher, CompanyConfig, Account, Entity, CostCenter, Tax, UtmConfig, PayrollEntry } from '../types';
+import { executeQuery, executeRun, initSQLite } from './sqliteEngine';
+import { CompanyConfig, Account, Voucher, LedgerEntry, Entity } from '../types';
 
-/**
- * CONFIGURACIÓN DE PERSISTENCIA CRÍTICA
- * No cambiar DB_NAME ni el esquema sin incrementar DB_VERSION.
- */
-const DB_NAME = 'ContadorPro_Production_DB'; 
-const DB_VERSION = 2;
-
-const STORES = {
-  TRANSACTIONS: 'transactions',
-  VOUCHERS: 'vouchers',
-  COMPANIES: 'companies',
-  ACCOUNTS: 'accounts',
-  ENTITIES: 'entities',
-  CENTERS: 'centers',
-  TAXES: 'taxes',
-  UTM: 'utm',
-  PAYROLL: 'payroll'
+export const initializeAppDB = async () => {
+  await initSQLite();
 };
 
-export const initDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => resolve(request.result);
-    request.onupgradeneeded = (event: any) => {
-      const db = event.target.result;
-      Object.values(STORES).forEach(storeName => {
-        if (!db.objectStoreNames.contains(storeName)) {
-          db.createObjectStore(storeName, { keyPath: 'id' });
-        }
-      });
-    };
-  });
+// --- CRUD EMPRESAS ---
+export const getCompanies = (): CompanyConfig[] => {
+  return executeQuery("SELECT * FROM companies") as any;
 };
 
-const ensureId = (storeName: string, item: any) => {
-  if (item.id) return item;
-  switch (storeName) {
-    case STORES.ACCOUNTS: item.id = `${item.companyId}-${item.codigo}`; break;
-    case STORES.ENTITIES: item.id = `${item.companyId}-${item.rut}`; break;
-    case STORES.UTM:
-    case STORES.PAYROLL: item.id = `${item.companyId}-${item.periodo}`; break;
-    default: item.id = `gen-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  }
-  return item;
+export const saveCompany = (company: CompanyConfig) => {
+  executeRun(
+    "INSERT OR REPLACE INTO companies (id, rut, razonSocial, direccion, comuna, giro, periodo, regimen) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [company.id, company.rut, company.razonSocial, company.direccion, company.comuna, company.giro, company.periodo, company.regimen]
+  );
 };
 
-export const saveData = async (storeName: string, data: any) => {
-  const db = await initDB();
-  const tx = db.transaction(storeName, 'readwrite');
-  const store = tx.objectStore(storeName);
-  const items = Array.isArray(data) ? data : [data];
-  items.forEach(item => store.put(ensureId(storeName, item)));
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve(true);
-    tx.onerror = () => reject(tx.error);
-  });
+// --- CRUD CUENTAS ---
+export const getAccounts = (companyId: string): Account[] => {
+  return executeQuery("SELECT * FROM accounts WHERE companyId = ? ORDER BY codigo", [companyId]) as any;
 };
 
-export const getAllData = async <T>(storeName: string): Promise<T[]> => {
-  const db = await initDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readonly');
-    const store = tx.objectStore(storeName);
-    const request = store.getAll();
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+export const saveAccount = (account: Account) => {
+  executeRun(
+    "INSERT OR REPLACE INTO accounts (id, companyId, parentId, codigo, nombre, imputable, tipo, nivel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [account.id, account.companyId, account.parentId, account.codigo, account.nombre, account.imputable ? 1 : 0, account.tipo, account.nivel]
+  );
 };
 
-export const deleteCompanyCascade = async (companyId: string) => {
-  const db = await initDB();
-  const stores = Object.values(STORES);
-  for (const storeName of stores) {
-    const tx = db.transaction(storeName, 'readwrite');
-    const store = tx.objectStore(storeName);
-    const request = store.getAll();
-    request.onsuccess = () => {
-      request.result.forEach((item: any) => {
-        if (item.companyId === companyId || item.id === companyId) store.delete(item.id);
-      });
-    };
+// --- CRUD VOUCHERS (Transaccional) ---
+export const saveVoucherFull = (voucher: Voucher, entries: LedgerEntry[]) => {
+  executeRun("BEGIN TRANSACTION");
+  try {
+    executeRun(
+      "INSERT OR REPLACE INTO vouchers (id, companyId, numero, fecha, tipo, glosaGeneral) VALUES (?, ?, ?, ?, ?, ?)",
+      [voucher.id, voucher.companyId, voucher.numero, voucher.fecha, voucher.tipo, voucher.glosaGeneral]
+    );
+
+    executeRun("DELETE FROM ledger_entries WHERE voucher_id = ?", [voucher.id]);
+
+    for (const entry of entries) {
+      executeRun(
+        "INSERT INTO ledger_entries (id, voucher_id, account_id, entity_id, glosa, debe, haber) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [entry.id, entry.voucher_id, entry.account_id, entry.entity_id, entry.glosa, entry.debe, entry.haber]
+      );
+    }
+    executeRun("COMMIT");
+  } catch (e) {
+    executeRun("ROLLBACK");
+    throw e;
   }
 };
 
-export const clearDatabase = async () => {
-  const db = await initDB();
-  const stores = Object.values(STORES);
-  const tx = db.transaction(stores, 'readwrite');
-  stores.forEach(s => tx.objectStore(s).clear());
-  return new Promise(resolve => tx.oncomplete = () => resolve(true));
+export const getVouchersWithEntries = (companyId: string) => {
+  const vouchers = executeQuery("SELECT * FROM vouchers WHERE companyId = ? ORDER BY fecha DESC", [companyId]);
+  return vouchers.map((v: any) => ({
+    ...v,
+    entradas: executeQuery("SELECT * FROM ledger_entries WHERE voucher_id = ?", [v.id])
+  }));
 };
 
-/**
- * EXPORTAR TODA LA BASE DE DATOS A JSON
- */
-export const exportFullBackup = async () => {
-  const backup: any = {};
-  for (const storeName of Object.values(STORES)) {
-    backup[storeName] = await getAllData(storeName);
-  }
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+// --- ELIMINACION CASCADA ---
+export const deleteCompany = (companyId: string) => {
+  executeRun("DELETE FROM companies WHERE id = ?", [companyId]);
+};
+
+export const clearDatabase = () => {
+  localStorage.removeItem('contador_pro_sqlite');
+  window.location.reload();
+};
+
+// --- BACKUP & RESTORE ---
+export const exportFullBackup = () => {
+  const data = localStorage.getItem('contador_pro_sqlite');
+  if (!data) return;
+  const blob = new Blob([data], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Respaldo_ContadorPro_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `contador_pro_backup_${new Date().toISOString().split('T')[0]}.json`;
   a.click();
+  URL.revokeObjectURL(url);
 };
 
-/**
- * IMPORTAR DESDE JSON
- */
-export const importFullBackup = async (jsonFile: File) => {
-  const reader = new FileReader();
-  return new Promise((resolve, reject) => {
-    reader.onload = async (e) => {
-      try {
-        const backup = JSON.parse(e.target?.result as string);
-        await clearDatabase();
-        for (const storeName of Object.keys(backup)) {
-          if (Object.values(STORES).includes(storeName)) {
-            await saveData(storeName, backup[storeName]);
-          }
-        }
-        resolve(true);
-      } catch (err) { reject(err); }
-    };
-    reader.readAsText(jsonFile);
-  });
+export const importFullBackup = async (file: File) => {
+  const text = await file.text();
+  localStorage.setItem('contador_pro_sqlite', text);
 };

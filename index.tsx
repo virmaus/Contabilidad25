@@ -2,42 +2,33 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initializeAppDB } from './utils/db';
 
-// Registro de Service Worker optimizado
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    // Usamos el path relativo asegurando que sea el del root
-    navigator.serviceWorker.register('/sw.js', { scope: '/' })
-      .then(registration => {
-        console.log('✅ Service Worker activo. Alcance:', registration.scope);
-        
-        // Verificar actualizaciones del repo cada vez que se carga la página
-        registration.update();
+const startApp = async () => {
+  try {
+    // Inicializar Motor SQLite
+    console.log("🚀 Iniciando motor SQLite...");
+    await initializeAppDB();
+    
+    const rootElement = document.getElementById('root');
+    if (!rootElement) throw new Error("Root element not found");
 
-        registration.onupdatefound = () => {
-          const installingWorker = registration.installing;
-          if (installingWorker) {
-            installingWorker.onstatechange = () => {
-              if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // Notificar al usuario que hay una nueva versión (vía evento custom)
-                window.dispatchEvent(new CustomEvent('pwa-update-available'));
-              }
-            };
-          }
-        };
-      })
-      .catch(error => {
-        console.error('❌ Error registrando el Service Worker:', error);
-      });
-  });
-}
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+  } catch (error) {
+    console.error("❌ Fallo crítico al iniciar la base de datos:", error);
+    document.body.innerHTML = `
+      <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+        <h1 style="color: #ef4444;">Error de Base de Datos</h1>
+        <p>No se pudo inicializar el motor SQLite local. Verifique los permisos del navegador.</p>
+        <button onclick="location.reload()" style="padding: 0.5rem 1rem; cursor: pointer;">Reintentar</button>
+      </div>
+    `;
+  }
+};
 
-const rootElement = document.getElementById('root');
-if (!rootElement) throw new Error("Root element not found");
-
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+startApp();
