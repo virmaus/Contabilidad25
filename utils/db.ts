@@ -1,9 +1,24 @@
 
-import { executeQuery, executeRun, initSQLite } from './sqliteEngine';
-import { CompanyConfig, Account, Voucher, LedgerEntry, Entity } from '../types';
+import { executeQuery, executeRun, initSQLite, persistDB, clearFullDatabase } from './sqliteEngine';
+import { CompanyConfig, Account, Voucher, LedgerEntry } from '../types';
 
 export const initializeAppDB = async () => {
   await initSQLite();
+};
+
+// Helper para IndexedDB (usado para backup externo)
+const getRawBinaryFromIDB = async (): Promise<Uint8Array | null> => {
+  return new Promise((resolve) => {
+    const request = indexedDB.open('ContadorProDatabase', 1);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction('sqlite_storage', 'readonly');
+      const store = tx.objectStore('sqlite_storage');
+      const getReq = store.get('main_db_blob');
+      getReq.onsuccess = () => resolve(getReq.result || null);
+    };
+    request.onerror = () => resolve(null);
+  });
 };
 
 // --- CRUD EMPRESAS ---
@@ -30,7 +45,7 @@ export const saveAccount = (account: Account) => {
   );
 };
 
-// --- CRUD VOUCHERS (Transaccional) ---
+// --- CRUD VOUCHERS ---
 export const saveVoucherFull = (voucher: Voucher, entries: LedgerEntry[]) => {
   executeRun("BEGIN TRANSACTION");
   try {
@@ -62,30 +77,47 @@ export const getVouchersWithEntries = (companyId: string) => {
   }));
 };
 
-// --- ELIMINACION CASCADA ---
 export const deleteCompany = (companyId: string) => {
   executeRun("DELETE FROM companies WHERE id = ?", [companyId]);
 };
 
 export const clearDatabase = () => {
-  localStorage.removeItem('contador_pro_sqlite');
-  window.location.reload();
+  if (confirm("¿Estás seguro de borrar TODA la base de datos?")) {
+    clearFullDatabase();
+  }
 };
 
-// --- BACKUP & RESTORE ---
-export const exportFullBackup = () => {
-  const data = localStorage.getItem('contador_pro_sqlite');
-  if (!data) return;
-  const blob = new Blob([data], { type: 'application/json' });
+// --- BACKUP & RESTORE (Optimizado para Binarios) ---
+export const exportFullBackup = async () => {
+  const data = await getRawBinaryFromIDB();
+  if (!data) {
+    alert("No hay datos para exportar.");
+    return;
+  }
+  
+  // Convertimos el Uint8Array a un Base64 para el archivo JSON o simplemente guardamos el binario
+  // Guardaremos un archivo .sqlpro que es el binario puro de SQLite
+  const blob = new Blob([data], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `contador_pro_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.download = `contador_pro_v2_${new Date().toISOString().split('T')[0]}.sqlpro`;
   a.click();
   URL.revokeObjectURL(url);
 };
 
 export const importFullBackup = async (file: File) => {
-  const text = await file.text();
-  localStorage.setItem('contador_pro_sqlite', text);
+  const buffer = await file.arrayBuffer();
+  const u8 = new Uint8Array(buffer);
+  
+  const request = indexedDB.open('ContadorProDatabase', 1);
+  request.onsuccess = () => {
+    const db = request.result;
+    const tx = db.transaction('sqlite_storage', 'readwrite');
+    tx.objectStore('sqlite_storage').put(u8, 'main_db_blob');
+    tx.oncomplete = () => {
+      alert("Importación exitosa. La aplicación se reiniciará.");
+      window.location.reload();
+    };
+  };
 };
