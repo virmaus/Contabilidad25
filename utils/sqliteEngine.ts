@@ -2,12 +2,12 @@
 import initSqlJs from 'sql.js';
 
 let db: any = null;
-const SQLITE_WASM_URL = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm';
 const IDB_NAME = 'ContadorProDatabase';
 const IDB_STORE = 'sqlite_storage';
 const IDB_KEY = 'main_db_blob';
+// DEBE coincidir exactamente con la versión cargada por el importmap/package.json
+const SQLITE_WASM_URL = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm';
 
-// Helper para IndexedDB (Promisified)
 const idb = {
   get: async (): Promise<Uint8Array | null> => {
     return new Promise((resolve) => {
@@ -62,37 +62,44 @@ export const initSQLite = async (): Promise<any> => {
   if (db) return db;
 
   try {
-    console.log("📥 Descargando motor SQLite WASM...");
-    const [wasmResponse, savedDb] = await Promise.all([
-      fetch(SQLITE_WASM_URL),
-      idb.get()
-    ]);
-
-    if (!wasmResponse.ok) throw new Error("Fallo al descargar WASM desde el CDN");
+    console.log("📥 Sincronizando Motor SQLite v1.12.0...");
+    
+    // Descarga del binario WASM
+    const wasmResponse = await fetch(SQLITE_WASM_URL);
+    if (!wasmResponse.ok) throw new Error(`Fallo al descargar WASM: ${wasmResponse.statusText}`);
     const wasmBinary = await wasmResponse.arrayBuffer();
 
-    // Cargamos initSqlJs que ahora será resuelto por Vite desde node_modules
-    const SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasmBinary) });
+    // Manejo de exportación por defecto de esm.sh
+    const initFn = typeof initSqlJs === 'function' ? initSqlJs : (initSqlJs as any).default;
+    
+    if (typeof initFn !== 'function') {
+      throw new Error("No se pudo encontrar la función de inicialización de sql.js");
+    }
+
+    const SQL = await initFn({
+      wasmBinary: new Uint8Array(wasmBinary)
+    });
+
+    const savedDb = await idb.get();
 
     if (savedDb) {
-      console.log("📂 Cargando desde IndexedDB (Optimizado)...");
+      console.log("📂 Base de datos recuperada de IndexedDB.");
       db = new SQL.Database(savedDb);
     } else {
       const legacyData = localStorage.getItem('contador_pro_sqlite');
       if (legacyData) {
-        console.log("🚚 Migrando datos desde LocalStorage a IndexedDB...");
+        console.log("🚚 Migrando datos antiguos...");
         try {
           const u8 = new Uint8Array(JSON.parse(legacyData));
           db = new SQL.Database(u8);
           await idb.set(u8);
           localStorage.removeItem('contador_pro_sqlite');
         } catch (e) {
-          console.error("Fallo en migración:", e);
           db = new SQL.Database();
           runInitialMigrations(db);
         }
       } else {
-        console.log("🆕 Creando nueva base de datos...");
+        console.log("🆕 Creando base de datos limpia...");
         db = new SQL.Database();
         runInitialMigrations(db);
       }
@@ -100,7 +107,7 @@ export const initSQLite = async (): Promise<any> => {
 
     return db;
   } catch (error) {
-    console.error("❌ Error de Inicialización SQLite:", error);
+    console.error("❌ Error Crítico en initSQLite:", error);
     throw error;
   }
 };
@@ -168,8 +175,12 @@ const runInitialMigrations = (database: any) => {
 
 export const persistDB = async () => {
   if (!db) return;
-  const data = db.export(); 
-  await idb.set(data);
+  try {
+    const data = db.export(); 
+    await idb.set(data);
+  } catch (e) {
+    console.error("Fallo al persistir base de datos:", e);
+  }
 };
 
 export const executeQuery = (sql: string, params: any[] = []) => {
