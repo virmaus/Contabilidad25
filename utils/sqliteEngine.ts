@@ -1,12 +1,13 @@
-
-import initSqlJs from 'sql.js';
+// @ts-ignore - Cargamos sql.js desde CDN para asegurar compatibilidad total en el entorno sandbox
+import initSqlJs from 'https://esm.sh/sql.js@1.12.0';
 
 let db: any = null;
 const IDB_NAME = 'ContadorProDatabase';
 const IDB_STORE = 'sqlite_storage';
 const IDB_KEY = 'main_db_blob';
-// DEBE coincidir exactamente con la versión cargada por el importmap/package.json
-const SQLITE_WASM_URL = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.wasm';
+
+// URL del binario WASM compatible con la versión 1.12.0
+const SQL_WASM_URL = 'https://esm.sh/sql.js@1.12.0/dist/sql-wasm.wasm';
 
 const idb = {
   get: async (): Promise<Uint8Array | null> => {
@@ -18,8 +19,8 @@ const idb = {
         }
       };
       request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction(IDB_STORE, 'readonly');
+        const database = request.result;
+        const tx = database.transaction(IDB_STORE, 'readonly');
         const store = tx.objectStore(IDB_STORE);
         const getReq = store.get(IDB_KEY);
         getReq.onsuccess = () => resolve(getReq.result || null);
@@ -37,8 +38,8 @@ const idb = {
         }
       };
       request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const database = request.result;
+        const tx = database.transaction(IDB_STORE, 'readwrite');
         const store = tx.objectStore(IDB_STORE);
         store.put(data, IDB_KEY);
         tx.oncomplete = () => resolve();
@@ -49,8 +50,8 @@ const idb = {
     return new Promise((resolve) => {
       const request = indexedDB.open(IDB_NAME, 1);
       request.onsuccess = () => {
-        const db = request.result;
-        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const database = request.result;
+        const tx = database.transaction(IDB_STORE, 'readwrite');
         tx.objectStore(IDB_STORE).clear();
         tx.oncomplete = () => resolve();
       };
@@ -62,52 +63,39 @@ export const initSQLite = async (): Promise<any> => {
   if (db) return db;
 
   try {
-    console.log("📥 Sincronizando Motor SQLite v1.12.0...");
+    console.log("🛠️ Iniciando carga manual de SQLite Engine...");
     
-    // Descarga del binario WASM
-    const wasmResponse = await fetch(SQLITE_WASM_URL);
+    // 1. Descargar manualmente el binario WASM para evitar que sql.js use 'fs'
+    // Esto soluciona el error: "[unenv] fs.readFileSync is not implemented yet!"
+    const wasmResponse = await fetch(SQL_WASM_URL);
     if (!wasmResponse.ok) throw new Error(`Fallo al descargar WASM: ${wasmResponse.statusText}`);
     const wasmBinary = await wasmResponse.arrayBuffer();
 
-    // Manejo de exportación por defecto de esm.sh
+    // 2. Resolver la función de inicialización
     const initFn = typeof initSqlJs === 'function' ? initSqlJs : (initSqlJs as any).default;
-    
     if (typeof initFn !== 'function') {
-      throw new Error("No se pudo encontrar la función de inicialización de sql.js");
+      throw new Error("El cargador de sql.js no devolvió una función válida.");
     }
 
+    // 3. Inicializar pasando el binario ya cargado
     const SQL = await initFn({
-      wasmBinary: new Uint8Array(wasmBinary)
+      wasmBinary: wasmBinary
     });
 
+    // 4. Cargar persistencia
     const savedDb = await idb.get();
-
     if (savedDb) {
-      console.log("📂 Base de datos recuperada de IndexedDB.");
+      console.log("📂 Cargando base de datos desde IndexedDB...");
       db = new SQL.Database(savedDb);
     } else {
-      const legacyData = localStorage.getItem('contador_pro_sqlite');
-      if (legacyData) {
-        console.log("🚚 Migrando datos antiguos...");
-        try {
-          const u8 = new Uint8Array(JSON.parse(legacyData));
-          db = new SQL.Database(u8);
-          await idb.set(u8);
-          localStorage.removeItem('contador_pro_sqlite');
-        } catch (e) {
-          db = new SQL.Database();
-          runInitialMigrations(db);
-        }
-      } else {
-        console.log("🆕 Creando base de datos limpia...");
-        db = new SQL.Database();
-        runInitialMigrations(db);
-      }
+      console.log("🆕 Creando nueva instancia de base de datos...");
+      db = new SQL.Database();
+      runInitialMigrations(db);
     }
 
     return db;
   } catch (error) {
-    console.error("❌ Error Crítico en initSQLite:", error);
+    console.error("❌ Error Crítico de SQLite:", error);
     throw error;
   }
 };
@@ -124,7 +112,6 @@ const runInitialMigrations = (database: any) => {
       periodo TEXT,
       regimen TEXT
     );
-
     CREATE TABLE IF NOT EXISTS accounts (
       id TEXT PRIMARY KEY,
       companyId TEXT NOT NULL,
@@ -136,7 +123,6 @@ const runInitialMigrations = (database: any) => {
       nivel INTEGER,
       FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS entities (
       id TEXT PRIMARY KEY,
       companyId TEXT NOT NULL,
@@ -146,7 +132,6 @@ const runInitialMigrations = (database: any) => {
       tipo TEXT,
       FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS vouchers (
       id TEXT PRIMARY KEY,
       companyId TEXT NOT NULL,
@@ -157,7 +142,6 @@ const runInitialMigrations = (database: any) => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(companyId) REFERENCES companies(id) ON DELETE CASCADE
     );
-
     CREATE TABLE IF NOT EXISTS ledger_entries (
       id TEXT PRIMARY KEY,
       voucher_id TEXT NOT NULL,
@@ -179,12 +163,12 @@ export const persistDB = async () => {
     const data = db.export(); 
     await idb.set(data);
   } catch (e) {
-    console.error("Fallo al persistir base de datos:", e);
+    console.error("Error al persistir DB:", e);
   }
 };
 
 export const executeQuery = (sql: string, params: any[] = []) => {
-  if (!db) throw new Error("Base de datos no inicializada");
+  if (!db) throw new Error("Base de datos no disponible");
   const stmt = db.prepare(sql);
   stmt.bind(params);
   const results = [];
@@ -196,7 +180,7 @@ export const executeQuery = (sql: string, params: any[] = []) => {
 };
 
 export const executeRun = (sql: string, params: any[] = []) => {
-  if (!db) throw new Error("Base de datos no inicializada");
+  if (!db) throw new Error("Base de datos no disponible");
   db.run(sql, params);
   persistDB();
 };
