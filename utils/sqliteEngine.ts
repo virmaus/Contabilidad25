@@ -12,7 +12,11 @@ const idb = {
   get: async (): Promise<Uint8Array | null> => {
     return new Promise((resolve) => {
       const request = indexedDB.open(IDB_NAME, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(IDB_STORE);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(IDB_STORE)) {
+          request.result.createObjectStore(IDB_STORE);
+        }
+      };
       request.onsuccess = () => {
         const db = request.result;
         const tx = db.transaction(IDB_STORE, 'readonly');
@@ -27,7 +31,11 @@ const idb = {
   set: async (data: Uint8Array): Promise<void> => {
     return new Promise((resolve) => {
       const request = indexedDB.open(IDB_NAME, 1);
-      request.onupgradeneeded = () => request.result.createObjectStore(IDB_STORE);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(IDB_STORE)) {
+          request.result.createObjectStore(IDB_STORE);
+        }
+      };
       request.onsuccess = () => {
         const db = request.result;
         const tx = db.transaction(IDB_STORE, 'readwrite');
@@ -60,16 +68,16 @@ export const initSQLite = async (): Promise<any> => {
       idb.get()
     ]);
 
-    if (!wasmResponse.ok) throw new Error("Fallo al descargar WASM");
+    if (!wasmResponse.ok) throw new Error("Fallo al descargar WASM desde el CDN");
     const wasmBinary = await wasmResponse.arrayBuffer();
 
-    const SQL = await initSqlJs({ wasmBinary });
+    // Cargamos initSqlJs que ahora será resuelto por Vite desde node_modules
+    const SQL = await initSqlJs({ wasmBinary: new Uint8Array(wasmBinary) });
 
     if (savedDb) {
       console.log("📂 Cargando desde IndexedDB (Optimizado)...");
       db = new SQL.Database(savedDb);
     } else {
-      // Intento de migración desde LocalStorage antiguo
       const legacyData = localStorage.getItem('contador_pro_sqlite');
       if (legacyData) {
         console.log("🚚 Migrando datos desde LocalStorage a IndexedDB...");
@@ -77,7 +85,7 @@ export const initSQLite = async (): Promise<any> => {
           const u8 = new Uint8Array(JSON.parse(legacyData));
           db = new SQL.Database(u8);
           await idb.set(u8);
-          localStorage.removeItem('contador_pro_sqlite'); // Limpiar después de migrar
+          localStorage.removeItem('contador_pro_sqlite');
         } catch (e) {
           console.error("Fallo en migración:", e);
           db = new SQL.Database();
@@ -160,8 +168,8 @@ const runInitialMigrations = (database: any) => {
 
 export const persistDB = async () => {
   if (!db) return;
-  const data = db.export(); // Retorna Uint8Array
-  await idb.set(data); // Guardado directo y ultra rápido
+  const data = db.export(); 
+  await idb.set(data);
 };
 
 export const executeQuery = (sql: string, params: any[] = []) => {
