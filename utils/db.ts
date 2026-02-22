@@ -1,5 +1,5 @@
 
-import { executeQuery, executeRun, initSQLite, persistDB, clearFullDatabase } from './sqliteEngine';
+import { executeQuery, executeRun, initSQLite, clearFullDatabase } from './sqliteEngine';
 import { CompanyConfig, Account, Voucher, LedgerEntry } from '../types';
 
 export const initializeAppDB = async () => {

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { UtmConfig } from '../types';
 import { TrendingUp, Plus, Save, Landmark, Info } from 'lucide-react';
 import { BaseCard } from './BaseCard';

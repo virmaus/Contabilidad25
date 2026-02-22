@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
-import { parseCSV, formatCurrency } from '../utils/dataProcessing';
+import { parseCSV } from '../utils/dataProcessing';
 import { 
   CheckCircle2, 
   LayoutGrid, 

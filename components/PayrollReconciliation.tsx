@@ -42,12 +42,12 @@ const ClipboardCheck = ({ className }: { className?: string }) => (
 );
 
 export const PayrollReconciliation: React.FC<Props> = ({ kpis, companyId, onUpdatePayroll }) => {
-  const { payrollSummary, balance8Columns, accounts } = kpis;
+  const { payrollSummary, balance8Columns } = kpis;
   const [isUploading, setIsUploading] = useState(false);
   
   // Filtro de cuentas para mapeo manual
-  const [selectedSalaryAccounts, setSelectedSalaryAccounts] = useState<string[]>([]);
-  const [selectedSocialLawAccounts, setSelectedSocialLawAccounts] = useState<string[]>([]);
+  const [selectedSalaryAccounts] = useState<string[]>([]);
+  const [selectedSocialLawAccounts] = useState<string[]>([]);
 
   const handleFiles = async (files: FileList) => {
     setIsUploading(true);

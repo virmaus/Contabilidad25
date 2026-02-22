@@ -1,21 +1,9 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
-  CompanyConfig, 
-  Account, 
-  Transaction,
-} from './types';
-import { 
-  getCompanies, 
   saveCompany, 
-  getAccounts, 
-  getVouchersWithEntries,
   clearDatabase,
-  deleteCompany,
-  saveAccount,
-  saveVoucherFull
 } from './utils/db';
-import { processTransactions } from './utils/dataProcessing';
 
 // Layout & UI
 import { Header } from './components/Header';
@@ -71,72 +59,48 @@ import {
   Building2
 } from 'lucide-react';
 
+import { AppProvider, useAppContext } from './context/AppContext';
+
 const APP_VERSION = "2.1.0-nav-pro";
 const GITHUB_REPO = "tu-usuario/tu-repositorio";
 
 type MainTab = 'dashboard' | 'archivo' | 'movimientos' | 'informes' | 'ayuda';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+  const { 
+    currentCompany, 
+    currentCompanyId, 
+    refreshCompanies,
+    transactions,
+    setTransactions,
+    accounts,
+    vouchers,
+    isDBLoading,
+    kpis
+  } = useAppContext();
+
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showSelector, setShowSelector] = useState(false);
   
-  // Estado persistente para sub-tabs
   const [activeSubTabs, setActiveSubTabs] = useState<Record<string, string>>({
     archivo: 'empresa',
     movimientos: 'convergencia',
     informes: 'balance'
   });
 
-  // Update States
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'up-to-date' | 'error'>('idle');
-
-  // Data States
-  const [companies, setCompanies] = useState<CompanyConfig[]>([]);
-  const [currentCompanyId, setCurrentCompanyId] = useState<string>(localStorage.getItem('selectedCompanyId') || '');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [vouchers, setVouchers] = useState<any[]>([]);
-  const [isDBLoading, setIsDBLoading] = useState(true);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
-    const initData = async () => {
-      const comps = getCompanies();
-      setCompanies(comps);
-      if (comps.length > 0 && !currentCompanyId) {
-        setCurrentCompanyId(comps[0].id);
-      }
-      setIsDBLoading(false);
-    };
-
-    initData();
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
-  useEffect(() => {
-    if (currentCompanyId) {
-      setAccounts(getAccounts(currentCompanyId));
-      setVouchers(getVouchersWithEntries(currentCompanyId));
-      localStorage.setItem('selectedCompanyId', currentCompanyId);
-      // Aquí cargaríamos transacciones específicas de la DB si existieran tablas dedicadas
-    }
-  }, [currentCompanyId]);
-
-  const currentCompany = useMemo(() => 
-    companies.find(c => c.id === currentCompanyId) || null
-  , [companies, currentCompanyId]);
-
-  const kpis = useMemo(() => 
-    processTransactions(transactions, vouchers, accounts, currentCompany)
-  , [transactions, vouchers, accounts, currentCompany]);
 
   const handleSubTabChange = (main: MainTab, sub: string) => {
     setActiveSubTabs(prev => ({ ...prev, [main]: sub }));
@@ -236,8 +200,8 @@ const App: React.FC = () => {
 
     if (activeTab === 'archivo') {
       switch (sub) {
-        case 'empresa': return <CompanyConfigForm config={currentCompany} onSave={(c) => { saveCompany(c); setCompanies(getCompanies()); }} />;
-        case 'cuentas': return <PlanDeCuentas accounts={accounts} onSave={(accs) => { accs.forEach(saveAccount); setAccounts(getAccounts(currentCompanyId)); }} />;
+        case 'empresa': return <CompanyConfigForm config={currentCompany} onSave={(c) => { saveCompany(c); refreshCompanies(); }} />;
+        case 'cuentas': return <PlanDeCuentas accounts={accounts} onSave={() => {}} />;
         case 'entidades': return <EntityManager entities={[]} onSave={() => {}} />;
         case 'impuestos': return <TaxManager taxes={[]} companyId={currentCompanyId} onSave={() => {}} />;
         case 'centros': return <CostCenterManager centers={[]} companyId={currentCompanyId} onSave={() => {}} />;
@@ -252,8 +216,8 @@ const App: React.FC = () => {
         case 'ventas': return <LibroVentasCompras transactions={transactions} type="venta" companyId={currentCompanyId} onUpdate={setTransactions} />;
         case 'compras': return <LibroVentasCompras transactions={transactions} type="compra" companyId={currentCompanyId} onUpdate={setTransactions} />;
         case 'honorarios': return <LibroHonorarios transactions={transactions} companyId={currentCompanyId} onUpdate={setTransactions} />;
-        case 'vouchers': return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={(v) => { saveVoucherFull(v, v.entradas); setVouchers(getVouchersWithEntries(currentCompanyId)); }} />;
-        case 'remuneraciones': return <PayrollReconciliation kpis={kpis} companyId={currentCompanyId} onUpdatePayroll={() => {}} onAddVoucher={(v) => { saveVoucherFull(v, v.entradas); setVouchers(getVouchersWithEntries(currentCompanyId)); }} />;
+        case 'vouchers': return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={() => {}} />;
+        case 'remuneraciones': return <PayrollReconciliation kpis={kpis} companyId={currentCompanyId} onUpdatePayroll={() => {}} />;
         case 'tesoreria': return <Tesoreria transactions={transactions} vouchers={vouchers} kpis={kpis} />;
         case 'banco': return <ConciliacionBancaria vouchers={vouchers} companyId={currentCompanyId} />;
         case 'activos': return <ActivosFijos companyId={currentCompanyId} />;
@@ -264,7 +228,7 @@ const App: React.FC = () => {
     if (activeTab === 'informes') {
       switch (sub) {
         case 'balance': return <FinancialAnalysis kpis={kpis} />;
-        case 'pl': return <EstadoResultados transactions={transactions} vouchers={vouchers} />;
+        case 'pl': return <EstadoResultados transactions={transactions} />;
         case 'diario': return <LibroDiario transactions={transactions} kpis={kpis} />;
         case 'mayor': return <LibroMayor transactions={transactions} />;
         case 'conciliacion': return <ConciliacionMensual transactions={transactions} kpis={kpis} />;
@@ -280,7 +244,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header 
-        company={currentCompany} 
         onSwitchCompany={() => setShowSelector(true)} 
         onReset={() => clearDatabase()}
       />
@@ -309,11 +272,6 @@ const App: React.FC = () => {
 
       {showSelector && (
         <CompanySelector 
-          companies={companies} 
-          currentId={currentCompanyId} 
-          onSelect={(id) => { setCurrentCompanyId(id); setShowSelector(false); }}
-          onAdd={(c) => { saveCompany(c); setCompanies(getCompanies()); setCurrentCompanyId(c.id); setShowSelector(false); }}
-          onDelete={(id) => { deleteCompany(id); setCompanies(getCompanies()); }}
           onClose={() => setShowSelector(false)}
         />
       )}
@@ -351,4 +309,11 @@ const TabButton = ({ icon: Icon, active, onClick, label }: any) => (
   </button>
 );
 
+const App: React.FC = () => (
+  <AppProvider>
+    <AppContent />
+  </AppProvider>
+);
+
 export default App;
+

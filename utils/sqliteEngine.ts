@@ -99,9 +99,17 @@ const runInitialMigrations = (database: any) => {
     CREATE TABLE IF NOT EXISTS entities (id TEXT PRIMARY KEY, companyId TEXT, rut TEXT, razonSocial TEXT, giro TEXT, tipo TEXT);
     CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT);
     CREATE TABLE IF NOT EXISTS ledger_entries (id TEXT PRIMARY KEY, voucher_id TEXT, account_id TEXT, entity_id TEXT, glosa TEXT, debe REAL, haber REAL);
+    
+    -- Índices para optimización de consultas
+    CREATE INDEX IF NOT EXISTS idx_accounts_company ON accounts(companyId);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_company ON vouchers(companyId);
+    CREATE INDEX IF NOT EXISTS idx_ledger_entries_voucher ON ledger_entries(voucher_id);
+    CREATE INDEX IF NOT EXISTS idx_ledger_entries_account ON ledger_entries(account_id);
+    CREATE INDEX IF NOT EXISTS idx_entities_company ON entities(companyId);
   `);
   persistDB();
 };
+
 
 export const persistDB = async () => {
   if (!db) return;

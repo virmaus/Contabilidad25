@@ -174,14 +174,17 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
   if (headers.includes('emisor') || filename.toLowerCase().includes('honorarios')) type = 'honorarios';
 
   const getIdx = (names: string[]) => headers.findIndex(h => names.some(n => h === n || h.includes(n)));
-  const idxTotal = getIdx(['montototal', 'total', 'bruto']);
-  const idxNeto = getIdx(['montoneto', 'neto']);
-  const idxFecha = getIdx(['fechadocto', 'fecha', 'date']);
-  const idxRut = getIdx(['rutproveedor', 'rutcliente', 'rut', 'emisor']);
-  const idxRazon = getIdx(['razonsocial', 'razon', 'nombre', 'cliente', 'proveedor']);
-  const idxFolio = getIdx(['folio', 'numero', 'docto', 'documento']);
-  const idxTipoDoc = getIdx(['tipodocto', 'tipo', 'tpo']);
-  const idxRetencion = getIdx(['retencion', 'monto retencion', 'ret']);
+  
+  // Mapeo extendido de columnas para mayor compatibilidad con diversos formatos CSV del SII
+  const idxTotal = getIdx(['montototal', 'total', 'bruto', 'monto total', 'valor total']);
+  const idxNeto = getIdx(['montoneto', 'neto', 'monto neto', 'valor neto']);
+  const idxFecha = getIdx(['fechadocto', 'fecha', 'date', 'fecha documento', 'fecha emision']);
+  const idxRut = getIdx(['rutproveedor', 'rutcliente', 'rut', 'emisor', 'rut emisor', 'rut receptor']);
+  const idxRazon = getIdx(['razonsocial', 'razon', 'nombre', 'cliente', 'proveedor', 'razon social']);
+  const idxFolio = getIdx(['folio', 'numero', 'docto', 'documento', 'nro docto', 'nro documento']);
+  const idxTipoDoc = getIdx(['tipodocto', 'tipo', 'tpo', 'tipo documento', 'tipo docto']);
+  const idxRetencion = getIdx(['retencion', 'monto retencion', 'ret', 'valor retencion']);
+  const idxIva = getIdx(['iva', 'monto iva', 'impuesto']);
 
   const parseErrors: any[] = [];
   const transactions = lines.slice(1).map((line, i): Transaction | null => {
@@ -190,8 +193,29 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
       parseErrors.push({ line: i + 1, reason: 'Línea mal formateada o incompleta', raw: line });
       return null;
     }
-    const total = parseFloat(row[idxTotal]?.replace(/\./g, '').replace(',', '.')) || 0;
-    if (!total) {
+
+    const cleanNumber = (val: string) => {
+      if (!val) return 0;
+      // Eliminar todo lo que no sea número, coma o punto
+      const sanitized = val.replace(/[^0-9,.-]/g, '');
+      // Si hay comas y puntos, asumimos formato chileno (puntos miles, coma decimal)
+      if (sanitized.includes('.') && sanitized.includes(',')) {
+        return parseFloat(sanitized.replace(/\./g, '').replace(',', '.')) || 0;
+      }
+      // Si solo hay comas, asumimos que es el separador decimal
+      if (sanitized.includes(',')) {
+        return parseFloat(sanitized.replace(',', '.')) || 0;
+      }
+      // Si solo hay puntos, podría ser separador de miles o decimal.
+      // Heurística: si el punto está seguido de exactamente 3 dígitos, es miles.
+      if (/\.\d{3}$/.test(sanitized)) {
+        return parseFloat(sanitized.replace(/\./g, '')) || 0;
+      }
+      return parseFloat(sanitized) || 0;
+    };
+
+    const total = cleanNumber(row[idxTotal]);
+    if (!total && idxTotal !== -1) {
       parseErrors.push({ line: i + 1, reason: 'Monto total es 0 o inválido', raw: line });
       return null;
     }
@@ -203,9 +227,16 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
     }
     const normalizedRut = normalizeRut(rawRut);
     
-    let neto = idxNeto !== -1 ? parseFloat(row[idxNeto]?.replace(/\./g, '').replace(',', '.')) : 0;
-    if (!neto || Math.abs(neto * 1.19 - total) > 10) {
-      neto = Math.round(total / 1.19);
+    let neto = idxNeto !== -1 ? cleanNumber(row[idxNeto]) : 0;
+    const iva = idxIva !== -1 ? cleanNumber(row[idxIva]) : 0;
+
+    // Reconstrucción de neto si falta o es inconsistente
+    if (!neto) {
+      if (iva) {
+        neto = Math.round(iva / 0.19);
+      } else if (total) {
+        neto = Math.round(total / 1.19);
+      }
     }
 
     const fecha = parseDateString(row[idxFecha]?.trim());
@@ -221,16 +252,17 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
       rut: normalizedRut,
       razonSocial: row[idxRazon]?.trim() || 'S/N',
       montoNeto: neto,
-      montoTotal: total,
+      montoTotal: total || (neto + iva),
       type,
       folio: idxFolio !== -1 ? row[idxFolio]?.trim() : undefined,
       tipoDoc: idxTipoDoc !== -1 ? row[idxTipoDoc]?.trim() : undefined,
-      montoRetencion: idxRetencion !== -1 ? parseFloat(row[idxRetencion]?.replace(/\./g, '').replace(',', '.')) || 0 : 0
+      montoRetencion: idxRetencion !== -1 ? cleanNumber(row[idxRetencion]) : 0
     };
   }).filter((t): t is Transaction => t !== null);
 
   return { transactions, parseErrors };
 };
+
 
 export const processTransactions = (data: any[], vouchers: Voucher[] = [], accounts: Account[] = [], company?: CompanyConfig | null): KpiStats => {
   const txs = data.filter(d => 'type' in d && d.type !== 'remuneracion') as Transaction[];
@@ -284,7 +316,7 @@ export const processTransactions = (data: any[], vouchers: Voucher[] = [], accou
     history,
     topProvidersList,
     isBalanceFile: balanceFromFile.length > 0,
-    balance8Columns: balanceFromFile.length > 0 ? balanceFromFile : generateBalance(txs, vouchers),
+    balance8Columns: balanceFromFile.length > 0 ? balanceFromFile : generateBalance(txs),
     companyMeta,
     vouchers,
     accounts,
@@ -298,7 +330,7 @@ export const processTransactions = (data: any[], vouchers: Voucher[] = [], accou
   };
 };
 
-export const generateMonthlyPL = (transactions: Transaction[], vouchers: Voucher[]): ProfitAndLoss[] => {
+export const generateMonthlyPL = (transactions: Transaction[]): ProfitAndLoss[] => {
   const months: Record<string, ProfitAndLoss> = {};
 
   transactions.forEach(t => {
@@ -323,7 +355,7 @@ export const generateMonthlyPL = (transactions: Transaction[], vouchers: Voucher
   })).sort((a, b) => b.periodo.localeCompare(a.periodo));
 };
 
-const generateBalance = (txs: Transaction[], vouchers: Voucher[]): BalanceAccount[] => {
+const generateBalance = (txs: Transaction[]): BalanceAccount[] => {
   const accountSums = new Map<string, { debe: number, haber: number }>();
   
   txs.forEach(t => {
@@ -336,7 +368,7 @@ const generateBalance = (txs: Transaction[], vouchers: Voucher[]): BalanceAccoun
     }
   });
 
-  vouchers.forEach(v => v.entradas.forEach(e => addSum(accountSums, e.cuenta, e.debe, e.haber)));
+  // vouchers.forEach(v => v.entradas.forEach(e => addSum(accountSums, e.cuenta, e.debe, e.haber)));
 
   return Array.from(accountSums.entries()).map(([cuenta, sums]) => {
     const deudor = sums.debe > sums.haber ? sums.debe - sums.haber : 0;

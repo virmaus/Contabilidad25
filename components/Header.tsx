@@ -4,23 +4,23 @@ import {
   Calculator, 
   ChevronDown, 
   Building, 
-  HelpCircle, 
   LayoutGrid, 
   Database, 
   FileUp, 
   Trash2,
-  X
+  X,
+  HelpCircle
 } from 'lucide-react';
-import { CompanyConfig } from '../types';
 import { exportFullBackup, importFullBackup } from '../utils/db';
+import { useAppContext } from '../context/AppContext';
 
 interface HeaderProps {
   onReset?: () => void;
   onSwitchCompany?: () => void;
-  company?: CompanyConfig | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, company }) => {
+export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany }) => {
+  const { currentCompany } = useAppContext();
   const [showTools, setShowTools] = useState(false);
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
         </div>
 
         <div className="flex-grow flex justify-center px-4">
-          {company ? (
+          {currentCompany ? (
             <button 
               onClick={onSwitchCompany}
               className="flex items-center gap-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-5 py-2 rounded-xl transition-all group max-w-[300px] sm:max-w-md"
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
                </div>
                <div className="flex flex-col text-left truncate">
                   <span className="text-[9px] font-black text-blue-400 uppercase tracking-tighter leading-none">Empresa Activa</span>
-                  <span className="text-xs font-black text-white leading-none truncate mt-1">{company.razonSocial}</span>
+                  <span className="text-xs font-black text-white leading-none truncate mt-1">{currentCompany.razonSocial}</span>
                </div>
                <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors ml-2" />
             </button>
@@ -112,3 +112,4 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
     </header>
   );
 };
+

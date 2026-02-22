@@ -1,15 +1,14 @@
 import React, { useMemo } from 'react';
-import { Transaction, Voucher } from '../types';
+import { Transaction } from '../types';
 import { formatCurrency, generateMonthlyPL } from '../utils/dataProcessing';
 import { BarChart3 } from 'lucide-react';
 
 interface Props {
   transactions: Transaction[];
-  vouchers: Voucher[];
 }
 
-export const EstadoResultados: React.FC<Props> = ({ transactions, vouchers }) => {
-  const plData = useMemo(() => generateMonthlyPL(transactions, vouchers), [transactions, vouchers]);
+export const EstadoResultados: React.FC<Props> = ({ transactions }) => {
+  const plData = useMemo(() => generateMonthlyPL(transactions), [transactions]);
 
   const totals = useMemo(() => {
     return plData.reduce((acc, curr) => ({
