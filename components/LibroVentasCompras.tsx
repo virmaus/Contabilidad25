@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
-import { formatCurrency } from '../utils/dataProcessing';
+import { formatCurrency, normalizeRut, validateRut } from '../utils/dataProcessing';
 // Added missing icon imports: Receipt and Download
-import { Printer, Plus, Trash2, X, Save, Edit3, Calculator, Receipt, Download } from 'lucide-react';
+import { Printer, Plus, Trash2, X, Save, Edit3, Calculator, Receipt, Download, FileDown, Table } from 'lucide-react';
+import { exportToCSV, exportToPDF, exportToSIICSV } from '../utils/exportUtils';
 
 interface Props {
   transactions: Transaction[];
@@ -33,13 +34,19 @@ export const LibroVentasCompras: React.FC<Props> = ({ transactions, type, compan
 
   const handleAdd = () => {
     if (!newTx.rut || !newTx.montoTotal || !newTx.fecha) return;
+    
+    const normalizedRut = normalizeRut(newTx.rut);
+    if (!validateRut(normalizedRut)) {
+      if (!confirm("El RUT ingresado parece inválido. ¿Desea continuar de todas formas?")) return;
+    }
+
     const tx: Transaction = {
       companyId,
       id: `tx-${Date.now()}`,
       fecha: newTx.fecha,
-      rut: newTx.rut,
+      rut: normalizedRut,
       razonSocial: newTx.razonSocial?.toUpperCase() || 'MANUAL',
-      montoNeto: newTx.montoNeto || (newTx.montoTotal / 1.19),
+      montoNeto: newTx.montoNeto || Math.round(newTx.montoTotal / 1.19),
       montoTotal: newTx.montoTotal,
       type: type
     };
@@ -52,6 +59,45 @@ export const LibroVentasCompras: React.FC<Props> = ({ transactions, type, compan
     if (confirm("¿Eliminar este registro del libro?")) {
       onUpdate?.(transactions.filter(t => t.id !== id));
     }
+  };
+
+  const handleExportCSV = () => {
+    if (type === 'honorarios') {
+      const data = filtered.map(t => ({
+        Fecha: t.fecha,
+        RUT: t.rut,
+        'Razón Social': t.razonSocial,
+        Neto: t.montoNeto,
+        Retencion: t.montoRetencion || 0,
+        Total: t.montoTotal
+      }));
+      exportToCSV(data, `Libro_Honorarios`);
+    } else {
+      exportToSIICSV(filtered, type as 'compra' | 'venta', `Libro_${type === 'venta' ? 'Ventas' : 'Compras'}_SII`);
+    }
+  };
+
+  const handleExportPDF = () => {
+    const headers = ['Fecha', 'RUT', 'Nombre / Razón Social', 'Neto', 'IVA', 'Total'];
+    const rows = filtered.map(t => [
+      t.fecha,
+      t.rut,
+      t.razonSocial,
+      formatCurrency(t.montoNeto),
+      formatCurrency(t.montoTotal - t.montoNeto),
+      formatCurrency(t.montoTotal)
+    ]);
+
+    rows.push([
+      'TOTALES',
+      '',
+      '',
+      formatCurrency(totals.neto),
+      formatCurrency(totals.iva),
+      formatCurrency(totals.total)
+    ]);
+
+    exportToPDF(`Libro Auxiliar de ${type === 'venta' ? 'Ventas' : 'Compras'}`, headers, rows, `Libro_${type === 'venta' ? 'Ventas' : 'Compras'}`);
   };
 
   return (
@@ -67,8 +113,20 @@ export const LibroVentasCompras: React.FC<Props> = ({ transactions, type, compan
            >
             <Plus className="w-4 h-4" /> Nuevo Registro
           </button>
+          <button 
+            onClick={handleExportCSV}
+            className="bg-emerald-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-800 shadow-md"
+          >
+            <Table className="w-4 h-4" /> CSV
+          </button>
+          <button 
+            onClick={handleExportPDF}
+            className="bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-blue-800 shadow-md"
+          >
+            <FileDown className="w-4 h-4" /> PDF
+          </button>
           <button onClick={() => window.print()} className="bg-slate-800 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
-            <Printer className="w-4 h-4" /> Imprimir Libro
+            <Printer className="w-4 h-4" /> Imprimir
           </button>
         </div>
       </div>
@@ -191,7 +249,10 @@ export const LibroVentasCompras: React.FC<Props> = ({ transactions, type, compan
               <Download className="w-8 h-8 text-slate-500" />
               <div>
                 <p className="text-[9px] font-bold text-slate-400 uppercase">Exportar para SII</p>
-                <button className="text-[10px] font-bold text-blue-600 hover:underline">Generar CSV/XML</button>
+                <div className="flex gap-2">
+                  <button onClick={handleExportCSV} className="text-[10px] font-bold text-blue-600 hover:underline">CSV</button>
+                  <button onClick={handleExportPDF} className="text-[10px] font-bold text-blue-600 hover:underline">PDF</button>
+                </div>
               </div>
             </div>
         </div>

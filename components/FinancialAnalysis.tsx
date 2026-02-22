@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { KpiStats, BalanceAccount, Transaction } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { FileText, Printer, X, ExternalLink, Search, Eye, FileDown } from 'lucide-react';
+import { FileText, Printer, X, ExternalLink, Search, Eye, FileDown, Table } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/exportUtils';
 
 interface Props {
   kpis: KpiStats;
@@ -36,20 +37,88 @@ export const FinancialAnalysis: React.FC<Props> = ({ kpis }) => {
   const utilidad = totals.ganancia - totals.perdida;
   const isLoss = utilidad < 0;
 
-  const handlePdfExport = () => {
-    // We use window.print() which is the most reliable way to generate high-quality 
-    // vectorized accounting PDFs from the browser, with specific @media print CSS.
-    window.print();
+  const handleExportCSV = () => {
+    const data = balance8Columns.map(acc => ({
+      Cuenta: acc.cuenta,
+      Debe: acc.debe,
+      Haber: acc.haber,
+      Deudor: acc.deudor,
+      Acreedor: acc.acreedor,
+      Activo: acc.activo,
+      Pasivo: acc.pasivo,
+      Perdida: acc.perdida,
+      Ganancia: acc.ganancia
+    }));
+    
+    // Add totals
+    data.push({
+      Cuenta: 'TOTALES',
+      Debe: totals.debe,
+      Haber: totals.haber,
+      Deudor: totals.deudor,
+      Acreedor: totals.acreedor,
+      Activo: totals.activo,
+      Pasivo: totals.pasivo,
+      Perdida: totals.perdida,
+      Ganancia: totals.ganancia
+    });
+
+    exportToCSV(data, `Balance_8_Columnas_${companyMeta?.razonSocial || 'Empresa'}`);
+  };
+
+  const handleExportPDF = () => {
+    const headers = ['Cuenta', 'Debe', 'Haber', 'Deudor', 'Acreedor', 'Activo', 'Pasivo', 'Perdida', 'Ganancia'];
+    const rows = balance8Columns.map(acc => [
+      acc.cuenta,
+      v(acc.debe),
+      v(acc.haber),
+      v(acc.deudor),
+      v(acc.acreedor),
+      v(acc.activo),
+      v(acc.pasivo),
+      v(acc.perdida),
+      v(acc.ganancia)
+    ]);
+
+    rows.push([
+      'TOTALES',
+      v(totals.debe),
+      v(totals.haber),
+      v(totals.deudor),
+      v(totals.acreedor),
+      v(totals.activo),
+      v(totals.pasivo),
+      v(totals.perdida),
+      v(totals.ganancia)
+    ]);
+
+    exportToPDF(
+      'Balance General de 8 Columnas',
+      headers,
+      rows,
+      `Balance_8_Columnas_${companyMeta?.razonSocial || 'Empresa'}`,
+      {
+        razonSocial: companyMeta?.razonSocial,
+        rut: companyMeta?.rut,
+        periodo: companyMeta?.periodo
+      }
+    );
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="flex justify-end gap-3 no-print">
         <button 
-          onClick={handlePdfExport}
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-emerald-800 transition-all"
+        >
+          <Table className="w-4 h-4" /> Exportar CSV
+        </button>
+        <button 
+          onClick={handleExportPDF}
           className="flex items-center gap-2 bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-blue-800 transition-all"
         >
-          <FileDown className="w-4 h-4" /> Generar PDF Formal
+          <FileDown className="w-4 h-4" /> Exportar PDF
         </button>
         <button className="flex items-center gap-2 bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm" onClick={() => window.print()}>
           <Printer className="w-4 h-4" /> Vista de Impresión

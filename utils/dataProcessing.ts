@@ -9,8 +9,37 @@ const detectSeparator = (line: string): string => {
   return semicolons > commas ? ';' : ',';
 };
 
-const normalizeHeader = (header: string): string => {
-  return header.toLowerCase().replace(/[^a-z0-9]/g, '');
+const normalizeHeader = (h: string): string => {
+  return h.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[^a-z0-9]/g, ''); // Remove special chars and spaces
+};
+
+export const validateRut = (rut: string): boolean => {
+  if (!rut || typeof rut !== 'string') return false;
+  const clean = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+  if (clean.length < 2) return false;
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  
+  let sum = 0;
+  let mul = 2;
+  for (let i = body.length - 1; i >= 0; i--) {
+    sum += parseInt(body[i]) * mul;
+    mul = mul === 7 ? 2 : mul + 1;
+  }
+  const res = 11 - (sum % 11);
+  const expectedDv = res === 11 ? '0' : res === 10 ? 'K' : res.toString();
+  return dv === expectedDv;
+};
+
+export const normalizeRut = (rut: string): string => {
+  if (!rut) return '';
+  const clean = rut.replace(/[^0-9kK]/g, '').toUpperCase();
+  if (clean.length < 2) return clean;
+  const body = clean.slice(0, -1);
+  const dv = clean.slice(-1);
+  return body.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + "-" + dv;
 };
 
 const parseDateString = (dateStr: string): string => {
@@ -38,33 +67,53 @@ const defaultMeta: CompanyMeta = {
 };
 
 // Added companyId parameter to ensure data is tagged during parsing
-export const parseCSV = (csvText: string, filename: string, companyId: string = ''): any[] => {
+export interface ParseResult {
+  data: any[];
+  errors: { line: number; reason: string; raw: string }[];
+  summary: { total: number; processed: number; rejected: number };
+}
+
+export const parseCSV = (csvText: string, filename: string, companyId: string = ''): ParseResult => {
   const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
-  if (lines.length < 2) return [];
+  if (lines.length < 2) return { data: [], errors: [], summary: { total: 0, processed: 0, rejected: 0 } };
 
   const headerIndex = findHeaderRow(lines);
   const separator = detectSeparator(lines[headerIndex]);
   const headers = lines[headerIndex].split(separator).map(h => normalizeHeader(h.trim()));
   
+  let data: any[] = [];
+  const errors: { line: number; reason: string; raw: string }[] = [];
+
   if (headers.includes('sueldobase') || headers.includes('costoempresa') || filename.toLowerCase().includes('centralizacion')) {
-    return [parsePayrollCSV(lines.slice(headerIndex), headers, separator, companyId)];
+    data = [parsePayrollCSV(lines.slice(headerIndex), headers, separator, companyId)];
+  } else if (headers.includes('activo') && headers.includes('pasivo')) {
+    data = parseBalanceCSV(lines.slice(headerIndex), headers, separator);
+  } else {
+    const { transactions, parseErrors } = parseTransactionCSVWithErrors(lines.slice(headerIndex), headers, separator, filename, companyId);
+    data = transactions;
+    errors.push(...parseErrors);
   }
 
-  const isBalance = headers.includes('activo') && headers.includes('pasivo');
-  if (isBalance) return parseBalanceCSV(lines.slice(headerIndex), headers, separator);
-  
-  return parseTransactionCSV(lines.slice(headerIndex), headers, separator, filename, companyId);
+  return {
+    data,
+    errors,
+    summary: {
+      total: lines.length - 1,
+      processed: data.length,
+      rejected: errors.length
+    }
+  };
 };
 
 const findHeaderRow = (lines: string[]): number => {
+  const keywords = ['cuenta', 'rut', 'monto', 'sueldo', 'fecha', 'folio', 'razon', 'total', 'neto'];
   for (let i = 0; i < Math.min(lines.length, 20); i++) {
-    const l = lines[i].toLowerCase();
-    if (l.includes('cuenta') || l.includes('rut') || l.includes('monto') || l.includes('sueldo')) return i;
+    const l = normalizeHeader(lines[i]);
+    if (keywords.some(k => l.includes(k))) return i;
   }
   return 0;
 };
 
-// Added companyId to ensure PayrollEntry satisfies its type definition
 const parsePayrollCSV = (lines: string[], headers: string[], separator: string, companyId: string = ''): PayrollEntry => {
   const getVal = (name: string, row: string[]) => {
     const idx = headers.indexOf(normalizeHeader(name));
@@ -74,7 +123,6 @@ const parsePayrollCSV = (lines: string[], headers: string[], separator: string, 
 
   const currentPeriodo = new Date().toISOString().substring(0, 7);
   let totals: PayrollEntry = {
-    // Fix: Added missing 'id' property to satisfy the PayrollEntry interface
     id: `payroll-${companyId}-${currentPeriodo}-${Date.now()}`,
     companyId,
     periodo: currentPeriodo,
@@ -120,8 +168,7 @@ const parseBalanceCSV = (lines: string[], headers: string[], separator: string):
   return accounts;
 };
 
-// Added companyId to ensure Transaction satisfies its type definition
-const parseTransactionCSV = (lines: string[], headers: string[], separator: string, filename: string, companyId: string = ''): Transaction[] => {
+const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separator: string, filename: string, companyId: string = ''): { transactions: Transaction[], parseErrors: any[] } => {
   let type: TransactionType = filename.toLowerCase().includes('venta') ? 'venta' : 'compra';
   if (headers.includes('rutcliente')) type = 'venta';
   if (headers.includes('emisor') || filename.toLowerCase().includes('honorarios')) type = 'honorarios';
@@ -132,23 +179,55 @@ const parseTransactionCSV = (lines: string[], headers: string[], separator: stri
   const idxFecha = getIdx(['fechadocto', 'fecha', 'date']);
   const idxRut = getIdx(['rutproveedor', 'rutcliente', 'rut', 'emisor']);
   const idxRazon = getIdx(['razonsocial', 'razon', 'nombre', 'cliente', 'proveedor']);
+  const idxFolio = getIdx(['folio', 'numero', 'docto', 'documento']);
+  const idxTipoDoc = getIdx(['tipodocto', 'tipo', 'tpo']);
 
-  return lines.slice(1).map((line, i): Transaction | null => {
+  const parseErrors: any[] = [];
+  const transactions = lines.slice(1).map((line, i): Transaction | null => {
     const row = line.split(separator);
-    if (row.length < headers.length * 0.4) return null;
+    if (row.length < headers.length * 0.4) {
+      parseErrors.push({ line: i + 1, reason: 'Línea mal formateada o incompleta', raw: line });
+      return null;
+    }
     const total = parseFloat(row[idxTotal]?.replace(/\./g, '').replace(',', '.')) || 0;
-    if (!total) return null;
+    if (!total) {
+      parseErrors.push({ line: i + 1, reason: 'Monto total es 0 o inválido', raw: line });
+      return null;
+    }
+    
+    const rawRut = row[idxRut]?.trim() || '';
+    if (!rawRut) {
+      parseErrors.push({ line: i + 1, reason: 'RUT ausente', raw: line });
+      return null;
+    }
+    const normalizedRut = normalizeRut(rawRut);
+    
+    let neto = idxNeto !== -1 ? parseFloat(row[idxNeto]?.replace(/\./g, '').replace(',', '.')) : 0;
+    if (!neto || Math.abs(neto * 1.19 - total) > 10) {
+      neto = Math.round(total / 1.19);
+    }
+
+    const fecha = parseDateString(row[idxFecha]?.trim());
+    if (!fecha) {
+      parseErrors.push({ line: i + 1, reason: 'Fecha inválida o ausente', raw: line });
+      return null;
+    }
+
     return {
       companyId,
       id: `tx-${Date.now()}-${i}`,
-      fecha: parseDateString(row[idxFecha]?.trim()),
-      rut: row[idxRut]?.trim() || 'S/R',
+      fecha,
+      rut: normalizedRut,
       razonSocial: row[idxRazon]?.trim() || 'S/N',
-      montoNeto: idxNeto !== -1 ? parseFloat(row[idxNeto]?.replace(/\./g, '').replace(',', '.')) : total / 1.19,
+      montoNeto: neto,
       montoTotal: total,
-      type
+      type,
+      folio: idxFolio !== -1 ? row[idxFolio]?.trim() : undefined,
+      tipoDoc: idxTipoDoc !== -1 ? row[idxTipoDoc]?.trim() : undefined
     };
   }).filter((t): t is Transaction => t !== null);
+
+  return { transactions, parseErrors };
 };
 
 export const processTransactions = (data: any[], vouchers: Voucher[] = [], accounts: Account[] = [], company?: CompanyConfig | null): KpiStats => {

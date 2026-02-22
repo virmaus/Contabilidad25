@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { ChevronLeft, ChevronRight, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowUpCircle, ArrowDownCircle, FileDown, Table } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/exportUtils';
 
 interface DataTableProps {
   transactions: Transaction[];
@@ -19,8 +20,48 @@ export const DataTable: React.FC<DataTableProps> = ({ transactions }) => {
     setCurrentPage(Math.min(Math.max(1, page), totalPages));
   };
 
+  const handleExportCSV = () => {
+    const data = transactions.map(t => ({
+      Tipo: t.type === 'venta' ? 'Venta' : 'Compra',
+      Fecha: t.fecha,
+      RUT: t.rut,
+      'Razón Social': t.razonSocial,
+      'Monto Neto': t.montoNeto,
+      'Monto Total': t.montoTotal
+    }));
+    exportToCSV(data, 'Consolidado_Transacciones');
+  };
+
+  const handleExportPDF = () => {
+    const headers = ['Tipo', 'Fecha', 'RUT', 'Razón Social', 'Neto', 'Total'];
+    const rows = transactions.map(t => [
+      t.type === 'venta' ? 'Venta' : 'Compra',
+      t.fecha,
+      t.rut,
+      t.razonSocial,
+      formatCurrency(t.montoNeto),
+      formatCurrency(t.montoTotal)
+    ]);
+
+    exportToPDF('Consolidado de Transacciones', headers, rows, 'Consolidado_Transacciones');
+  };
+
   return (
     <div className="w-full">
+      <div className="p-4 border-b border-slate-100 flex justify-end gap-2 no-print">
+        <button 
+          onClick={handleExportCSV}
+          className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-100 hover:bg-emerald-100 transition-colors"
+        >
+          <Table className="w-3.5 h-3.5" /> CSV
+        </button>
+        <button 
+          onClick={handleExportPDF}
+          className="flex items-center gap-1.5 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-lg text-xs font-bold border border-blue-100 hover:bg-blue-100 transition-colors"
+        >
+          <FileDown className="w-3.5 h-3.5" /> PDF
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm text-left text-slate-600">
           <thead className="bg-slate-50 text-slate-700 uppercase font-medium text-xs">

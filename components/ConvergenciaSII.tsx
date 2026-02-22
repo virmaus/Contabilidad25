@@ -28,6 +28,7 @@ export const ConvergenciaSII: React.FC<Props> = ({ onUpdateTransactions, current
   const [selectedType, setSelectedType] = useState<TransactionType>('compra');
   const [sucursal, setSucursal] = useState('01-CASA MATRIZ');
   const [processedCount, setProcessedCount] = useState(0);
+  const [importErrors, setImportErrors] = useState<{ line: number; reason: string; raw: string }[]>([]);
 
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [pendingResults, setPendingResults] = useState<Transaction[]>([]);
@@ -36,30 +37,38 @@ export const ConvergenciaSII: React.FC<Props> = ({ onUpdateTransactions, current
   const handleFiles = async (files: FileList) => {
     setIsProcessing(true);
     const allResults: Transaction[] = [];
+    const allErrors: any[] = [];
     
     for (let i = 0; i < files.length; i++) {
       const text = await files[i].text();
-      // Pass companyId to ensure parsed data is correctly tagged
       const result = parseCSV(text, files[i].name, companyId);
       
-      const typedResults = result.filter(r => 'type' in r).map(r => ({
+      const typedResults = result.data.filter(r => 'type' in r).map(r => ({
         ...r,
         companyId: companyId
       })) as Transaction[];
       
       allResults.push(...typedResults);
+      allErrors.push(...result.errors.map(e => ({ ...e, filename: files[i].name })));
     }
+
+    setImportErrors(allErrors);
+
+    const getTxKey = (t: Transaction) => {
+      // Clave robusta: RUT + Fecha + Monto + Folio (si existe) + TipoDoc (si existe)
+      return `${t.rut}-${t.fecha}-${t.montoTotal}-${t.folio || ''}-${t.tipoDoc || ''}`;
+    };
 
     const seenMap = new Map<string, Transaction>();
     currentTransactions.forEach(t => {
-      seenMap.set(`${t.rut}-${t.fecha}-${t.montoTotal}`, t);
+      seenMap.set(getTxKey(t), t);
     });
 
     const duplicates: Transaction[] = [];
     const clean: Transaction[] = [];
 
     allResults.forEach(t => {
-      const key = `${t.rut}-${t.fecha}-${t.montoTotal}`;
+      const key = getTxKey(t);
       if (seenMap.has(key)) {
         duplicates.push(t);
       } else {
@@ -144,6 +153,32 @@ export const ConvergenciaSII: React.FC<Props> = ({ onUpdateTransactions, current
             </div>
             <FileUploader onFilesSelected={handleFiles} isLoading={isProcessing} />
           </div>
+
+          {importErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Se omitieron {importErrors.length} registros por errores de formato</span>
+                <button 
+                  onClick={() => setImportErrors([])}
+                  className="ml-auto text-[10px] hover:underline"
+                >
+                  Limpiar avisos
+                </button>
+              </div>
+              <div className="max-h-32 overflow-y-auto space-y-1">
+                {importErrors.slice(0, 5).map((err, idx) => (
+                  <div key={idx} className="text-[10px] text-red-600 flex justify-between bg-white/50 p-1 rounded">
+                    <span>Línea {err.line}: {err.reason}</span>
+                    <span className="font-mono opacity-50 truncate max-w-[200px]">{err.raw}</span>
+                  </div>
+                ))}
+                {importErrors.length > 5 && (
+                  <p className="text-[9px] text-red-400 italic">... y {importErrors.length - 5} errores más.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

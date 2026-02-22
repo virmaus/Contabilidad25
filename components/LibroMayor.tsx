@@ -2,7 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { LibraryBig, ChevronDown, User, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { LibraryBig, ChevronDown, User, ArrowUpRight, ArrowDownRight, FileDown, Table, Printer } from 'lucide-react';
+import { exportToCSV, exportToPDF } from '../utils/exportUtils';
 
 interface Props {
   transactions: Transaction[];
@@ -33,6 +34,52 @@ export const LibroMayor: React.FC<Props> = ({ transactions }) => {
         movements: acc[1].txs.sort((a, b) => a.fecha.localeCompare(b.fecha))
     };
   }, [selectedRut, accounts]);
+
+  const handleExportCSV = () => {
+    if (!currentAccount) return;
+    let runningBalance = 0;
+    const data = currentAccount.movements.map((m, idx) => {
+      const isDebit = m.type === 'venta';
+      const amount = m.montoTotal;
+      runningBalance += isDebit ? amount : -amount;
+      return {
+        Fecha: m.fecha,
+        Tipo: isDebit ? 'VENTA' : 'COMPRA',
+        Debe: isDebit ? amount : 0,
+        Haber: !isDebit ? amount : 0,
+        Saldo: runningBalance
+      };
+    });
+    exportToCSV(data, `Libro_Mayor_${currentAccount.rut}`);
+  };
+
+  const handleExportPDF = () => {
+    if (!currentAccount) return;
+    const headers = ['Fecha', 'Documento / Tipo', 'Debe (Cargo)', 'Haber (Abono)', 'Saldo'];
+    let runningBalance = 0;
+    const rows = currentAccount.movements.map((m, idx) => {
+      const isDebit = m.type === 'venta';
+      const amount = m.montoTotal;
+      runningBalance += isDebit ? amount : -amount;
+      return [
+        m.fecha,
+        isDebit ? 'VENTA' : 'COMPRA',
+        isDebit ? formatCurrency(amount) : '',
+        !isDebit ? formatCurrency(amount) : '',
+        formatCurrency(runningBalance)
+      ];
+    });
+
+    rows.push([
+      'TOTALES',
+      '',
+      formatCurrency(currentAccount.movements.filter(m => m.type === 'venta').reduce((s, m) => s + m.montoTotal, 0)),
+      formatCurrency(currentAccount.movements.filter(m => m.type === 'compra').reduce((s, m) => s + m.montoTotal, 0)),
+      formatCurrency(runningBalance)
+    ]);
+
+    exportToPDF(`Libro Mayor: ${currentAccount.razonSocial}`, headers, rows, `Libro_Mayor_${currentAccount.rut}`);
+  };
 
   if (transactions.length === 0) {
     return (
@@ -84,6 +131,26 @@ export const LibroMayor: React.FC<Props> = ({ transactions }) => {
                     <div>
                         <h2 className="text-2xl font-black text-slate-900 leading-tight uppercase">{currentAccount.razonSocial}</h2>
                         <p className="text-sm text-slate-500 font-mono tracking-widest mt-1">CUENTA ANALITICA: {currentAccount.rut}</p>
+                        <div className="flex gap-2 mt-4 no-print">
+                            <button 
+                                onClick={handleExportCSV}
+                                className="flex items-center gap-1.5 bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-emerald-800 transition-all"
+                            >
+                                <Table className="w-3.5 h-3.5" /> CSV
+                            </button>
+                            <button 
+                                onClick={handleExportPDF}
+                                className="flex items-center gap-1.5 bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-blue-800 transition-all"
+                            >
+                                <FileDown className="w-3.5 h-3.5" /> PDF
+                            </button>
+                            <button 
+                                onClick={() => window.print()}
+                                className="flex items-center gap-1.5 bg-slate-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm hover:bg-slate-700 transition-all"
+                            >
+                                <Printer className="w-3.5 h-3.5" /> Imprimir
+                            </button>
+                        </div>
                     </div>
                     <div className="bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm text-right">
                         <p className="text-[10px] uppercase font-bold text-slate-400">Saldo Acumulado</p>

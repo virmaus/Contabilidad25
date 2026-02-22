@@ -75,6 +75,8 @@ export interface Transaction {
   montoTotal: number;
   type: TransactionType;
   montoRetencion?: number;
+  folio?: string;
+  tipoDoc?: string;
 }
 
 export interface BalanceAccount {

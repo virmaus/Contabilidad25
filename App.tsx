@@ -47,6 +47,7 @@ import { FinancialAnalysis } from './components/FinancialAnalysis';
 import { LibroDiario } from './components/LibroDiario';
 import { LibroMayor } from './components/LibroMayor';
 import { ConciliacionMensual } from './components/ConciliacionMensual';
+import { HelpGuide } from './components/HelpGuide';
 
 import { 
   Database,
@@ -66,13 +67,14 @@ import {
   TrendingUp,
   Receipt,
   BookOpen,
-  Scale
+  Scale,
+  HelpCircle
 } from 'lucide-react';
 
 const APP_VERSION = "2.1.0-nav-pro";
 const GITHUB_REPO = "tu-usuario/tu-repositorio";
 
-type MainTab = 'dashboard' | 'archivo' | 'movimientos' | 'informes';
+type MainTab = 'dashboard' | 'archivo' | 'movimientos' | 'informes' | 'ayuda';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<MainTab>('dashboard');
@@ -198,7 +200,8 @@ const App: React.FC = () => {
         { id: 'diario', label: 'Libro Diario', icon: BookOpen },
         { id: 'mayor', label: 'Libro Mayor', icon: BookOpen },
         { id: 'conciliacion', label: 'Conciliación IVA', icon: ArrowLeftRight },
-      ]
+      ],
+      ayuda: []
     };
 
     return (
@@ -263,6 +266,8 @@ const App: React.FC = () => {
       }
     }
 
+    if (activeTab === 'ayuda') return <HelpGuide />;
+
     return null;
   };
 
@@ -281,6 +286,7 @@ const App: React.FC = () => {
             <TabButton icon={FolderOpen} active={activeTab === 'archivo'} onClick={() => setActiveTab('archivo')} label="Archivo" />
             <TabButton icon={ArrowLeftRight} active={activeTab === 'movimientos'} onClick={() => setActiveTab('movimientos')} label="Movimientos" />
             <TabButton icon={FileBarChart} active={activeTab === 'informes'} onClick={() => setActiveTab('informes')} label="Informes" />
+            <TabButton icon={HelpCircle} active={activeTab === 'ayuda'} onClick={() => setActiveTab('ayuda')} label="Ayuda" />
           </div>
           
           <div className="hidden sm:flex items-center gap-4 text-[9px] font-black uppercase tracking-widest">
