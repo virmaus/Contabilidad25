@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Transaction, KpiStats } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
 import { StatsCard } from './StatsCard';
@@ -7,17 +7,15 @@ import {
   ShoppingCart, 
   TrendingUp, 
   Scale, 
-  LayoutDashboard, 
   Database, 
   ArrowRight, 
   Building2, 
-  AlertTriangle, 
-  Trash2,
   Sparkles,
   Layers
 } from 'lucide-react';
 import { Charts } from './Charts';
 import { DataTable } from './DataTable';
+import { Card } from './ui/Card';
 
 interface DashboardProps {
   data: Transaction[];
@@ -25,6 +23,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
+  const operationalResult = useMemo(() => kpis.totalSales - kpis.totalPurchases, [kpis.totalSales, kpis.totalPurchases]);
+
   if (data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] animate-fade-in">
@@ -93,7 +93,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
         />
         <StatsCard
           title="Resultado Operacional"
-          value={formatCurrency(kpis.totalSales - kpis.totalPurchases)}
+          value={formatCurrency(operationalResult)}
           icon={Scale}
           colorClass="bg-blue-500 text-blue-600"
         />
@@ -104,10 +104,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
            <Charts kpis={kpis} />
         </div>
         
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden h-fit">
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Top 10 Mayores Entidades</h3>
-          </div>
+        <Card className="h-fit" title="Top 10 Mayores Entidades" headerClassName="p-4">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-50 text-slate-500 font-medium">
@@ -134,18 +131,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, kpis }) => {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-tight">Consolidado de Transacciones Procesadas</h3>
-            <span className="text-[10px] font-black text-slate-500 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">
-              {data.length} registros en memoria
-            </span>
-        </div>
+      <Card
+        title="Consolidado de Transacciones Procesadas"
+        action={
+          <span className="text-[10px] font-black text-slate-500 uppercase bg-white px-3 py-1 rounded-full border border-slate-200">
+            {data.length} registros en memoria
+          </span>
+        }
+      >
         <DataTable transactions={data} />
-      </div>
+      </Card>
     </div>
   );
 };

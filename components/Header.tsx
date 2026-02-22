@@ -11,17 +11,12 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import { CompanyConfig } from '../types';
 import { exportFullBackup, importFullBackup } from '../utils/db';
+import { useAppContext } from '../context/AppContext';
 
-interface HeaderProps {
-  onReset?: () => void;
-  onSwitchCompany?: () => void;
-  company?: CompanyConfig | null;
-}
-
-export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, company }) => {
+export const Header: React.FC = () => {
   const [showTools, setShowTools] = useState(false);
+  const { currentCompany: company, setShowSelector, resetDatabase } = useAppContext();
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -48,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
         <div className="flex-grow flex justify-center px-4">
           {company ? (
             <button 
-              onClick={onSwitchCompany}
+              onClick={() => setShowSelector(true)}
               className="flex items-center gap-3 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 px-5 py-2 rounded-xl transition-all group max-w-[300px] sm:max-w-md"
             >
                <div className="bg-blue-600 p-1.5 rounded-lg shrink-0">
@@ -61,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
                <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors ml-2" />
             </button>
           ) : (
-            <button onClick={onSwitchCompany} className="text-xs bg-blue-600 px-4 py-2 rounded-lg font-bold animate-pulse">
+            <button onClick={() => setShowSelector(true)} className="text-xs bg-blue-600 px-4 py-2 rounded-lg font-bold animate-pulse">
               SELECCIONAR EMPRESA
             </button>
           )}
@@ -95,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({ onReset, onSwitchCompany, compan
                 </label>
                 <div className="h-px bg-slate-100 mx-3" />
                 <button 
-                  onClick={() => { setShowTools(false); onReset?.(); }}
+                  onClick={() => { setShowTools(false); resetDatabase(); }}
                   className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-xs font-bold text-red-600 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" /> Reiniciar Todo
