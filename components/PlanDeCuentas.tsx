@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Account } from '../types';
-import { BookType, Plus, Save, Trash2, Check, X, Edit2, Undo2 } from 'lucide-react';
+import { BookType, Plus, Save, Trash2, Check, X, Edit2, Undo2, Sparkles } from 'lucide-react';
+import { getStandardAccounts } from '../utils/standardPlan';
 
 interface Props {
   accounts: Account[];
@@ -10,13 +11,16 @@ interface Props {
 
 export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
   const [localAccounts, setLocalAccounts] = useState<Account[]>(accounts.length > 0 ? accounts : [
-    { codigo: '1', nombre: 'ACTIVO', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Activo' },
-    { codigo: '1.01', nombre: 'ACTIVO CIRCULANTE', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Activo' },
-    { codigo: '1.01.01', nombre: 'CAJA', imputable: true, analisis: false, conciliacion: true, centroCosto: false, tipo: 'Activo' },
-    { codigo: '2', nombre: 'PASIVO', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Pasivo' },
+    { id: 'init-1', companyId: 'temp', parentId: null, codigo: '1', nombre: 'ACTIVO', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Activo' },
+    { id: 'init-1.01', companyId: 'temp', parentId: 'init-1', codigo: '1.01', nombre: 'ACTIVO CIRCULANTE', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Activo' },
+    { id: 'init-1.01.01', companyId: 'temp', parentId: 'init-1.01', codigo: '1.01.01', nombre: 'CAJA', imputable: true, analisis: false, conciliacion: true, centroCosto: false, tipo: 'Activo' },
+    { id: 'init-2', companyId: 'temp', parentId: null, codigo: '2', nombre: 'PASIVO', imputable: false, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Pasivo' },
   ]);
 
   const [newAcc, setNewAcc] = useState<Account>({
+    id: '',
+    companyId: accounts.length > 0 ? accounts[0].companyId : 'temp',
+    parentId: null,
     codigo: '',
     nombre: '',
     imputable: true,
@@ -36,9 +40,20 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
       alert("El código de cuenta ya existe.");
       return;
     }
-    const updated = [...localAccounts, newAcc].sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true, sensitivity: 'base' }));
+    const updated = [...localAccounts, { ...newAcc, id: `acc-${Date.now()}` }].sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true, sensitivity: 'base' }));
     setLocalAccounts(updated);
-    setNewAcc({ codigo: '', nombre: '', imputable: true, analisis: false, conciliacion: false, centroCosto: false, tipo: 'Activo' });
+    setNewAcc({ 
+      id: '',
+      companyId: accounts.length > 0 ? accounts[0].companyId : 'temp',
+      parentId: null,
+      codigo: '', 
+      nombre: '', 
+      imputable: true, 
+      analisis: false, 
+      conciliacion: false, 
+      centroCosto: false, 
+      tipo: 'Activo' 
+    });
   };
 
   const handleRemove = (codigo: string) => {
@@ -65,6 +80,13 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
     setEditFields(null);
   };
 
+  const handleLoadStandard = () => {
+    if (confirm("¿Está seguro de cargar el Plan de Cuentas Estándar? Esto reemplazará su plan actual (no guardado).")) {
+      const companyId = accounts.length > 0 ? accounts[0].companyId : 'temp';
+      setLocalAccounts(getStandardAccounts(companyId));
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-20">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -76,12 +98,20 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
               <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">Gestión de Cuentas Contables e Institucionales</p>
             </div>
           </div>
-          <button 
-            onClick={() => onSave(localAccounts)}
-            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95"
-          >
-            <Save className="w-4 h-4" /> Guardar Cambios en DB
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={handleLoadStandard}
+              className="bg-slate-800 hover:bg-slate-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400" /> Cargar Estándar
+            </button>
+            <button 
+              onClick={() => onSave(localAccounts)}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all active:scale-95"
+            >
+              <Save className="w-4 h-4" /> Guardar Cambios en DB
+            </button>
+          </div>
         </div>
 
         <div className="p-6 bg-slate-50 border-b border-slate-200">
@@ -158,6 +188,8 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
                 <th className="px-4 py-4 border-b text-center">Aná.</th>
                 <th className="px-4 py-4 border-b text-center">Conc.</th>
                 <th className="px-4 py-4 border-b text-center">C.C.</th>
+                <th className="px-4 py-4 border-b text-center">EFE+</th>
+                <th className="px-4 py-4 border-b text-center">EFE-</th>
                 <th className="px-6 py-4 border-b text-right">Acciones</th>
               </tr>
             </thead>
@@ -239,6 +271,32 @@ export const PlanDeCuentas: React.FC<Props> = ({ accounts, onSave }) => {
                         <input type="checkbox" checked={editFields?.centroCosto} onChange={e => setEditFields(prev => prev ? {...prev, centroCosto: e.target.checked} : null)} className="w-4 h-4 accent-blue-600" />
                       ) : (
                         acc.centroCosto ? <Check className="w-4 h-4 text-emerald-500 mx-auto" /> : <X className="w-4 h-4 text-slate-300 mx-auto" />
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-center font-mono text-[10px]">
+                      {isEditing ? (
+                        <input 
+                          type="text" 
+                          value={editFields?.efectivoPos || ''} 
+                          onChange={e => setEditFields(prev => prev ? {...prev, efectivoPos: e.target.value} : null)}
+                          className="w-12 p-1 border border-blue-400 rounded outline-none bg-blue-50 text-center"
+                        />
+                      ) : (
+                        acc.efectivoPos || '-'
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-center font-mono text-[10px]">
+                      {isEditing ? (
+                        <input 
+                          type="text" 
+                          value={editFields?.efectivoNeg || ''} 
+                          onChange={e => setEditFields(prev => prev ? {...prev, efectivoNeg: e.target.value} : null)}
+                          className="w-12 p-1 border border-blue-400 rounded outline-none bg-blue-50 text-center"
+                        />
+                      ) : (
+                        acc.efectivoNeg || '-'
                       )}
                     </td>
 

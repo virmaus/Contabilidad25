@@ -40,8 +40,8 @@ export const getAccounts = (companyId: string): Account[] => {
 
 export const saveAccount = (account: Account) => {
   executeRun(
-    "INSERT OR REPLACE INTO accounts (id, companyId, parentId, codigo, nombre, imputable, tipo, nivel) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    [account.id, account.companyId, account.parentId, account.codigo, account.nombre, account.imputable ? 1 : 0, account.tipo, account.nivel]
+    "INSERT OR REPLACE INTO accounts (id, companyId, parentId, codigo, nombre, imputable, tipo, nivel, efectivoPos, efectivoNeg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [account.id, account.companyId, account.parentId, account.codigo, account.nombre, account.imputable ? 1 : 0, account.tipo, account.nivel, account.efectivoPos, account.efectivoNeg]
   );
 };
 

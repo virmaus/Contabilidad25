@@ -26,6 +26,8 @@ export interface Account {
   analisis?: boolean;
   conciliacion?: boolean;
   centroCosto?: boolean;
+  efectivoPos?: string;
+  efectivoNeg?: string;
 }
 
 export interface Entity {

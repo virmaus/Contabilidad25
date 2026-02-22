@@ -95,7 +95,7 @@ export const initSQLite = async (): Promise<any> => {
 const runInitialMigrations = (database: any) => {
   database.run(`
     CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, rut TEXT, razonSocial TEXT, direccion TEXT, comuna TEXT, giro TEXT, periodo TEXT, regimen TEXT);
-    CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, companyId TEXT, parentId TEXT, codigo TEXT, nombre TEXT, imputable INTEGER, tipo TEXT, nivel INTEGER);
+    CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, companyId TEXT, parentId TEXT, codigo TEXT, nombre TEXT, imputable INTEGER, tipo TEXT, nivel INTEGER, efectivoPos TEXT, efectivoNeg TEXT);
     CREATE TABLE IF NOT EXISTS entities (id TEXT PRIMARY KEY, companyId TEXT, rut TEXT, razonSocial TEXT, giro TEXT, tipo TEXT);
     CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT);
     CREATE TABLE IF NOT EXISTS ledger_entries (id TEXT PRIMARY KEY, voucher_id TEXT, account_id TEXT, entity_id TEXT, glosa TEXT, debe REAL, haber REAL);
