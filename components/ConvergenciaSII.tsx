@@ -3,17 +3,11 @@ import React, { useState } from 'react';
 import { Transaction, TransactionType } from '../types';
 import { parseCSV, formatCurrency } from '../utils/dataProcessing';
 import { 
-  Info, 
   CheckCircle2, 
-  Upload, 
-  Database, 
   LayoutGrid, 
   FileSearch, 
   AlertTriangle, 
-  Copy, 
-  X,
-  ChevronRight,
-  ShieldCheck
+  Copy
 } from 'lucide-react';
 import { FileUploader } from './FileUploader';
 
@@ -26,7 +20,6 @@ interface Props {
 export const ConvergenciaSII: React.FC<Props> = ({ onUpdateTransactions, currentTransactions, companyId }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedType, setSelectedType] = useState<TransactionType>('compra');
-  const [sucursal, setSucursal] = useState('01-CASA MATRIZ');
   const [processedCount, setProcessedCount] = useState(0);
   const [importErrors, setImportErrors] = useState<{ line: number; reason: string; raw: string }[]>([]);
 

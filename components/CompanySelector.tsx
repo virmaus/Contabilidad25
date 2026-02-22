@@ -8,7 +8,6 @@ import {
   X, 
   Trash2, 
   Search, 
-  Sparkles,
   ArrowRight
 } from 'lucide-react';
 

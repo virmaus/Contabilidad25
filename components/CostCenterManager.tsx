@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { CostCenter } from '../types';
-import { Layers, Plus, Save, Trash2, Check, X, Edit2, Undo2, AlertCircle } from 'lucide-react';
+import { Layers, Plus, Save, Trash2, Check, Edit2, Undo2, AlertCircle } from 'lucide-react';
 
 interface Props {
   centers: CostCenter[];

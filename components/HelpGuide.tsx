@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, HelpCircle, FileText, Upload, Download, CheckCircle2 } from 'lucide-react';
+import { BookOpen, HelpCircle, Upload, Download, CheckCircle2 } from 'lucide-react';
 
 export const HelpGuide: React.FC = () => {
   return (

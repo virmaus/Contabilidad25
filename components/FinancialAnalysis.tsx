@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { KpiStats, BalanceAccount, Transaction } from '../types';
+import { KpiStats, BalanceAccount } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
 import { FileText, Printer, X, ExternalLink, Search, Eye, FileDown, Table } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/exportUtils';

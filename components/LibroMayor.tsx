@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { LibraryBig, ChevronDown, User, ArrowUpRight, ArrowDownRight, FileDown, Table, Printer } from 'lucide-react';
+import { LibraryBig, User, ArrowUpRight, ArrowDownRight, FileDown, Table, Printer } from 'lucide-react';
 import { exportToCSV, exportToPDF } from '../utils/exportUtils';
 
 interface Props {
@@ -38,7 +38,7 @@ export const LibroMayor: React.FC<Props> = ({ transactions }) => {
   const handleExportCSV = () => {
     if (!currentAccount) return;
     let runningBalance = 0;
-    const data = currentAccount.movements.map((m, idx) => {
+    const data = currentAccount.movements.map((m) => {
       const isDebit = m.type === 'venta';
       const amount = m.montoTotal;
       runningBalance += isDebit ? amount : -amount;
@@ -57,7 +57,7 @@ export const LibroMayor: React.FC<Props> = ({ transactions }) => {
     if (!currentAccount) return;
     const headers = ['Fecha', 'Documento / Tipo', 'Debe (Cargo)', 'Haber (Abono)', 'Saldo'];
     let runningBalance = 0;
-    const rows = currentAccount.movements.map((m, idx) => {
+    const rows = currentAccount.movements.map((m) => {
       const isDebit = m.type === 'venta';
       const amount = m.montoTotal;
       runningBalance += isDebit ? amount : -amount;

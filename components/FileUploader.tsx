@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { UploadCloud, FileText, Loader2, Layers } from 'lucide-react';
+import { UploadCloud, Loader2, Layers } from 'lucide-react';
 
 interface FileUploaderProps {
   onFilesSelected: (files: FileList) => void;

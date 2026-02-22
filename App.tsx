@@ -3,13 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   CompanyConfig, 
   Account, 
-  Voucher,
-  LedgerEntry,
-  Entity,
   Transaction,
-  UtmConfig,
-  Tax,
-  CostCenter
 } from './types';
 import { 
   getCompanies, 
@@ -18,7 +12,8 @@ import {
   getVouchersWithEntries,
   clearDatabase,
   deleteCompany,
-  saveAccount
+  saveAccount,
+  saveVoucherFull
 } from './utils/db';
 import { processTransactions } from './utils/dataProcessing';
 
@@ -41,12 +36,16 @@ import { LibroVentasCompras } from './components/LibroVentasCompras';
 import { LibroHonorarios } from './components/LibroHonorarios';
 import { VoucherManager } from './components/VoucherManager';
 import { PayrollReconciliation } from './components/PayrollReconciliation';
+import { Tesoreria } from './components/Tesoreria';
+import { ConciliacionBancaria } from './components/ConciliacionBancaria';
+import { ActivosFijos } from './components/ActivosFijos';
 
 // Informes Components
 import { FinancialAnalysis } from './components/FinancialAnalysis';
 import { LibroDiario } from './components/LibroDiario';
 import { LibroMayor } from './components/LibroMayor';
 import { ConciliacionMensual } from './components/ConciliacionMensual';
+import { EstadoResultados } from './components/EstadoResultados';
 import { HelpGuide } from './components/HelpGuide';
 
 import { 
@@ -56,11 +55,8 @@ import {
   ArrowLeftRight,
   FileBarChart,
   Settings,
-  AlertTriangle,
   Github,
   RefreshCw,
-  Download,
-  CheckCircle2,
   Users,
   Percent,
   Layers,
@@ -68,7 +64,11 @@ import {
   Receipt,
   BookOpen,
   Scale,
-  HelpCircle
+  HelpCircle,
+  Wallet,
+  Landmark,
+  BarChart3,
+  Building2
 } from 'lucide-react';
 
 const APP_VERSION = "2.1.0-nav-pro";
@@ -90,7 +90,6 @@ const App: React.FC = () => {
 
   // Update States
   const [updateStatus, setUpdateStatus] = useState<'idle' | 'checking' | 'available' | 'up-to-date' | 'error'>('idle');
-  const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
   // Data States
   const [companies, setCompanies] = useState<CompanyConfig[]>([]);
@@ -151,7 +150,6 @@ const App: React.FC = () => {
       if (!response.ok) throw new Error();
       const data = await response.json();
       const version = data.tag_name.replace('v', '');
-      setLatestVersion(version);
       if (version !== APP_VERSION) setUpdateStatus('available');
       else {
         setUpdateStatus('up-to-date');
@@ -194,9 +192,13 @@ const App: React.FC = () => {
         { id: 'honorarios', label: 'Honorarios', icon: Users },
         { id: 'vouchers', label: 'Voucher Manager', icon: Layers },
         { id: 'remuneraciones', label: 'Remuneraciones', icon: Users },
+        { id: 'tesoreria', label: 'Caja/Tesorería', icon: Wallet },
+        { id: 'banco', label: 'Conciliación Banco', icon: Landmark },
+        { id: 'activos', label: 'Activos Fijos', icon: Building2 },
       ],
       informes: [
         { id: 'balance', label: 'Balance 8 Cols', icon: Scale },
+        { id: 'pl', label: 'Estado Resultados', icon: BarChart3 },
         { id: 'diario', label: 'Libro Diario', icon: BookOpen },
         { id: 'mayor', label: 'Libro Mayor', icon: BookOpen },
         { id: 'conciliacion', label: 'Conciliación IVA', icon: ArrowLeftRight },
@@ -250,8 +252,11 @@ const App: React.FC = () => {
         case 'ventas': return <LibroVentasCompras transactions={transactions} type="venta" companyId={currentCompanyId} onUpdate={setTransactions} />;
         case 'compras': return <LibroVentasCompras transactions={transactions} type="compra" companyId={currentCompanyId} onUpdate={setTransactions} />;
         case 'honorarios': return <LibroHonorarios transactions={transactions} companyId={currentCompanyId} onUpdate={setTransactions} />;
-        case 'vouchers': return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={(v) => { /* logic to save voucher */ }} />;
-        case 'remuneraciones': return <PayrollReconciliation kpis={kpis} companyId={currentCompanyId} onUpdatePayroll={() => {}} />;
+        case 'vouchers': return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={(v) => { saveVoucherFull(v, v.entradas); setVouchers(getVouchersWithEntries(currentCompanyId)); }} />;
+        case 'remuneraciones': return <PayrollReconciliation kpis={kpis} companyId={currentCompanyId} onUpdatePayroll={() => {}} onAddVoucher={(v) => { saveVoucherFull(v, v.entradas); setVouchers(getVouchersWithEntries(currentCompanyId)); }} />;
+        case 'tesoreria': return <Tesoreria transactions={transactions} vouchers={vouchers} kpis={kpis} />;
+        case 'banco': return <ConciliacionBancaria vouchers={vouchers} companyId={currentCompanyId} />;
+        case 'activos': return <ActivosFijos companyId={currentCompanyId} />;
         default: return null;
       }
     }
@@ -259,6 +264,7 @@ const App: React.FC = () => {
     if (activeTab === 'informes') {
       switch (sub) {
         case 'balance': return <FinancialAnalysis kpis={kpis} />;
+        case 'pl': return <EstadoResultados transactions={transactions} vouchers={vouchers} />;
         case 'diario': return <LibroDiario transactions={transactions} kpis={kpis} />;
         case 'mayor': return <LibroMayor transactions={transactions} />;
         case 'conciliacion': return <ConciliacionMensual transactions={transactions} kpis={kpis} />;

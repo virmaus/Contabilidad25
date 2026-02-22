@@ -97,7 +97,7 @@ export const exportFullBackup = async () => {
   
   // Convertimos el Uint8Array a un Base64 para el archivo JSON o simplemente guardamos el binario
   // Guardaremos un archivo .sqlpro que es el binario puro de SQLite
-  const blob = new Blob([data], { type: 'application/octet-stream' });
+  const blob = new Blob([data as any], { type: 'application/octet-stream' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

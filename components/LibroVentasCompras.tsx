@@ -203,7 +203,7 @@ export const LibroVentasCompras: React.FC<Props> = ({ transactions, type, compan
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((t, idx) => (
+            {filtered.map((t) => (
               <tr key={t.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="py-2 px-1 whitespace-nowrap">{t.fecha}</td>
                 <td className="py-2 px-1 font-mono">{t.rut}</td>

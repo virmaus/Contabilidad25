@@ -7,12 +7,9 @@ import {
   ShoppingCart, 
   TrendingUp, 
   Scale, 
-  LayoutDashboard, 
   Database, 
   ArrowRight, 
   Building2, 
-  AlertTriangle, 
-  Trash2,
   Sparkles,
   Layers
 } from 'lucide-react';

@@ -4,9 +4,7 @@ import { KpiStats, PayrollEntry } from '../types';
 import { formatCurrency, parseCSV } from '../utils/dataProcessing';
 import { 
   Users, 
-  FileCheck, 
   AlertTriangle, 
-  ArrowRight, 
   ShieldCheck, 
   Landmark, 
   Upload, 
@@ -23,6 +21,26 @@ interface Props {
   onUpdatePayroll: (data: PayrollEntry) => void;
 }
 
+const AccountMiniCard: React.FC<{label: string, code: string, value: number, isPasivo?: boolean}> = ({label, code, value, isPasivo}) => (
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-colors">
+        <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{label}</p>
+            <p className="text-xs font-mono font-bold text-slate-600">{code}</p>
+        </div>
+        <p className={`text-sm font-black mt-3 ${isPasivo ? 'text-blue-700' : 'text-emerald-700'}`}>
+            {formatCurrency(value)}
+        </p>
+    </div>
+);
+
+const ClipboardCheck = ({ className }: { className?: string }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+    <path d="m9 14 2 2 4-4"/>
+  </svg>
+);
+
 export const PayrollReconciliation: React.FC<Props> = ({ kpis, companyId, onUpdatePayroll }) => {
   const { payrollSummary, balance8Columns, accounts } = kpis;
   const [isUploading, setIsUploading] = useState(false);
@@ -37,7 +55,7 @@ export const PayrollReconciliation: React.FC<Props> = ({ kpis, companyId, onUpda
       const text = await files[0].text();
       // Pass companyId to satisfy PayrollEntry type requirements
       const result = parseCSV(text, files[0].name, companyId);
-      const payroll = result.find(d => 'costoEmpresa' in d) as PayrollEntry | undefined;
+      const payroll = result.data.find(d => 'costoEmpresa' in d) as PayrollEntry | undefined;
       
       if (payroll) {
         onUpdatePayroll(payroll);
@@ -255,24 +273,3 @@ export const PayrollReconciliation: React.FC<Props> = ({ kpis, companyId, onUpda
     </div>
   );
 };
-
-const AccountMiniCard: React.FC<{label: string, code: string, value: number, isPasivo?: boolean}> = ({label, code, value, isPasivo}) => (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-colors">
-        <div>
-            <p className="text-[9px] font-black text-slate-400 uppercase mb-1">{label}</p>
-            <p className="text-xs font-mono font-bold text-slate-600">{code}</p>
-        </div>
-        <p className={`text-sm font-black mt-3 ${isPasivo ? 'text-blue-700' : 'text-emerald-700'}`}>
-            {formatCurrency(value)}
-        </p>
-    </div>
-);
-
-// Agregado icono faltante
-const ClipboardCheck = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
-    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-    <path d="m9 14 2 2 4-4"/>
-  </svg>
-);

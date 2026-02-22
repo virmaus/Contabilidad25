@@ -135,7 +135,7 @@ export const LibroDiario: React.FC<Props> = ({ transactions, kpis }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {sorted.map((t, idx) => {
+            {sorted.map((t) => {
               const isSale = t.type === 'venta';
               return (
                 <React.Fragment key={t.id}>

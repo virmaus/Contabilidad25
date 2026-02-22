@@ -67,8 +67,8 @@ export const Charts: React.FC<ChartsProps> = ({ kpis }) => {
                 tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
               />
               <Tooltip 
-                formatter={(value: number, name: string, props: any) => [
-                    formatCurrency(value), 
+                formatter={(value: any, _name: any, props: any) => [
+                    formatCurrency(Number(value)), 
                     props.payload.type === 'venta' ? 'Venta' : 'Compra'
                 ]}
                 labelFormatter={(label, payload) => {
@@ -117,7 +117,7 @@ export const Charts: React.FC<ChartsProps> = ({ kpis }) => {
                 tickFormatter={(value) => `$${(value / 1000000).toFixed(1)}M`}
               />
               <Tooltip 
-                 formatter={(value: number) => [formatCurrency(value)]}
+                 formatter={(value: any) => [formatCurrency(Number(value))]}
                  labelFormatter={(label) => {
                     if (isMonthly && label) {
                         const parts = label.split('-');

@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 import { Entity } from '../types';
-import { Users, Plus, Save, Trash2, Search, Building, AlertTriangle, X } from 'lucide-react';
+import { Users, Plus, Save, Trash2, Search, AlertTriangle, X } from 'lucide-react';
+import { BaseCard } from './BaseCard';
 
 interface Props {
   entities: Entity[];
@@ -54,23 +55,20 @@ export const EntityManager: React.FC<Props> = ({ entities, onSave }) => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-20">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Users className="w-6 h-6 text-blue-400" />
-            <div>
-              <h2 className="text-xl font-bold leading-none">Maestro de Entidades</h2>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">Clientes, Proveedores y Otros Terceros</p>
-            </div>
-          </div>
+      <BaseCard
+        title="Maestro de Entidades"
+        subtitle="Clientes, Proveedores y Otros Terceros"
+        icon={Users}
+        headerActions={
           <button 
             onClick={() => onSave(localEntities)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
           >
             <Save className="w-4 h-4" /> Guardar en DB
           </button>
-        </div>
-
+        }
+        noPadding
+      >
         <div className="p-6 bg-slate-50 border-b border-slate-200 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
             <div>
@@ -146,7 +144,7 @@ export const EntityManager: React.FC<Props> = ({ entities, onSave }) => {
             </tbody>
           </table>
         </div>
-      </div>
+      </BaseCard>
 
       {/* Styled Delete Confirmation Modal */}
       {rutToDelete && (

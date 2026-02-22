@@ -156,3 +156,34 @@ export interface KpiStats {
   payrollSummary?: PayrollEntry;
   advanced?: any;
 }
+
+export interface BankStatementEntry {
+  id: string;
+  companyId: string;
+  fecha: string;
+  descripcion: string;
+  monto: number; // Positivo abono, Negativo cargo
+  referencia?: string;
+  matchedVoucherId?: string;
+}
+
+export interface Asset {
+  id: string;
+  companyId: string;
+  nombre: string;
+  fechaCompra: string;
+  valorCompra: number;
+  vidaUtilMeses: number;
+  vidaUtilRestante: number;
+  depreciacionAcumulada: number;
+  valorLibro: number;
+}
+
+export interface ProfitAndLoss {
+  periodo: string;
+  ingresos: number;
+  costos: number;
+  gastos: number;
+  ebitda: number;
+  utilidadNeta: number;
+}

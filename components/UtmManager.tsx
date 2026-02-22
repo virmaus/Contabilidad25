@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
 import { UtmConfig } from '../types';
-import { TrendingUp, Plus, Save, Calendar, Landmark, Info } from 'lucide-react';
+import { TrendingUp, Plus, Save, Landmark, Info } from 'lucide-react';
+import { BaseCard } from './BaseCard';
 
 interface Props {
   utmData: UtmConfig[];
@@ -30,23 +31,19 @@ export const UtmManager: React.FC<Props> = ({ utmData, onSave }) => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto pb-20">
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <TrendingUp className="w-6 h-6 text-blue-400" />
-            <div>
-              <h2 className="text-xl font-bold leading-none">Valores UTM y Remanentes</h2>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 font-bold">Actualización Mensual y Reajuste de Crédito Fiscal</p>
-            </div>
-          </div>
+      <BaseCard
+        title="Valores UTM y Remanentes"
+        subtitle="Actualización Mensual y Reajuste de Crédito Fiscal"
+        icon={TrendingUp}
+        headerActions={
           <button 
             onClick={() => onSave(localUtm)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg"
           >
             <Save className="w-4 h-4" /> Guardar Todo
           </button>
-        </div>
-
+        }
+      >
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-4">
             <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
@@ -156,7 +153,7 @@ export const UtmManager: React.FC<Props> = ({ utmData, onSave }) => {
             </div>
           </div>
         </div>
-      </div>
+      </BaseCard>
     </div>
   );
 };

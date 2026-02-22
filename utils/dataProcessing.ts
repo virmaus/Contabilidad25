@@ -1,6 +1,6 @@
 
 // Added missing PayrollEntry import
-import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, CompanyConfig, PayrollEntry } from '../types';
+import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, CompanyConfig, PayrollEntry, ProfitAndLoss } from '../types';
 import { calculateVaR } from './financialCalculations';
 
 const detectSeparator = (line: string): string => {
@@ -181,6 +181,7 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
   const idxRazon = getIdx(['razonsocial', 'razon', 'nombre', 'cliente', 'proveedor']);
   const idxFolio = getIdx(['folio', 'numero', 'docto', 'documento']);
   const idxTipoDoc = getIdx(['tipodocto', 'tipo', 'tpo']);
+  const idxRetencion = getIdx(['retencion', 'monto retencion', 'ret']);
 
   const parseErrors: any[] = [];
   const transactions = lines.slice(1).map((line, i): Transaction | null => {
@@ -223,7 +224,8 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
       montoTotal: total,
       type,
       folio: idxFolio !== -1 ? row[idxFolio]?.trim() : undefined,
-      tipoDoc: idxTipoDoc !== -1 ? row[idxTipoDoc]?.trim() : undefined
+      tipoDoc: idxTipoDoc !== -1 ? row[idxTipoDoc]?.trim() : undefined,
+      montoRetencion: idxRetencion !== -1 ? parseFloat(row[idxRetencion]?.replace(/\./g, '').replace(',', '.')) || 0 : 0
     };
   }).filter((t): t is Transaction => t !== null);
 
@@ -290,9 +292,35 @@ export const processTransactions = (data: any[], vouchers: Voucher[] = [], accou
     advanced: {
       var: calculateVaR(history.map(h => h.net)),
       tir: 0, roe: 0, payback: 0, totalDepreciation: 0, 
-      accumulatedProfit: ts - tp, liquidez: 0, patrimonio: 0
+      accumulatedProfit: ts - tp, liquidez: 0, patrimonio: 0,
+      ppmEstimated: ts * 0.01 // Default 1% PPM estimation
     }
   };
+};
+
+export const generateMonthlyPL = (transactions: Transaction[], vouchers: Voucher[]): ProfitAndLoss[] => {
+  const months: Record<string, ProfitAndLoss> = {};
+
+  transactions.forEach(t => {
+    const month = t.fecha.substring(0, 7);
+    if (!months[month]) {
+      months[month] = { periodo: month, ingresos: 0, costos: 0, gastos: 0, ebitda: 0, utilidadNeta: 0 };
+    }
+    if (t.type === 'venta') {
+      months[month].ingresos += t.montoNeto;
+    } else if (t.type === 'compra') {
+      // Simple heuristic: if it's a purchase, it's a cost or expense
+      // In a real system, we'd use account mapping
+      if (t.montoNeto > 100000) months[month].costos += t.montoNeto;
+      else months[month].gastos += t.montoNeto;
+    }
+  });
+
+  return Object.values(months).map(pl => ({
+    ...pl,
+    ebitda: pl.ingresos - pl.costos - pl.gastos,
+    utilidadNeta: pl.ingresos - pl.costos - pl.gastos // Simplified
+  })).sort((a, b) => b.periodo.localeCompare(a.periodo));
 };
 
 const generateBalance = (txs: Transaction[], vouchers: Voucher[]): BalanceAccount[] => {
