@@ -27,6 +27,7 @@ import { PayrollReconciliation } from './components/PayrollReconciliation';
 import { Tesoreria } from './components/Tesoreria';
 import { ConciliacionBancaria } from './components/ConciliacionBancaria';
 import { ActivosFijos } from './components/ActivosFijos';
+import { PpmCalculator } from './components/PpmCalculator';
 
 // Informes Components
 import { FinancialAnalysis } from './components/FinancialAnalysis';
@@ -156,6 +157,7 @@ const AppContent: React.FC = () => {
         { id: 'honorarios', label: 'Honorarios', icon: Users },
         { id: 'vouchers', label: 'Voucher Manager', icon: Layers },
         { id: 'remuneraciones', label: 'Remuneraciones', icon: Users },
+        { id: 'ppm', label: 'Cálculo PPM', icon: Percent },
         { id: 'tesoreria', label: 'Caja/Tesorería', icon: Wallet },
         { id: 'banco', label: 'Conciliación Banco', icon: Landmark },
         { id: 'activos', label: 'Activos Fijos', icon: Building2 },
@@ -218,6 +220,7 @@ const AppContent: React.FC = () => {
         case 'honorarios': return <LibroHonorarios transactions={transactions} companyId={currentCompanyId} onUpdate={setTransactions} />;
         case 'vouchers': return <VoucherManager vouchers={vouchers} companyId={currentCompanyId} onAddVoucher={() => {}} />;
         case 'remuneraciones': return <PayrollReconciliation kpis={kpis} companyId={currentCompanyId} onUpdatePayroll={() => {}} />;
+        case 'ppm': return <PpmCalculator kpis={kpis} companyId={currentCompanyId} ppmConfigs={useAppContext().ppmConfigs} onRefresh={() => useAppContext().refreshAppData(currentCompanyId)} />;
         case 'tesoreria': return <Tesoreria transactions={transactions} vouchers={vouchers} kpis={kpis} />;
         case 'banco': return <ConciliacionBancaria vouchers={vouchers} companyId={currentCompanyId} />;
         case 'activos': return <ActivosFijos companyId={currentCompanyId} />;

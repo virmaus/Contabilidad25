@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Voucher, VoucherEntry, VoucherType } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { Plus, Trash2, Save, FileSpreadsheet, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Save, FileSpreadsheet, CheckCircle2, AlertCircle, FileJson } from 'lucide-react';
 
 interface Props {
   vouchers: Voucher[];
@@ -40,6 +40,51 @@ export const VoucherManager: React.FC<Props> = ({ vouchers, companyId, onAddVouc
     resetForm();
   };
 
+  const handleImportJSON = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      // Validación y Auditoría básica
+      const vouchersToImport = Array.isArray(data) ? data : [data];
+      
+      let importedCount = 0;
+      vouchersToImport.forEach((v: any) => {
+        if (v.fecha && v.tipo && Array.isArray(v.entradas) && v.entradas.length > 0) {
+          // Validar cuadratura
+          const d = v.entradas.reduce((acc: number, curr: any) => acc + (Number(curr.debe) || 0), 0);
+          const h = v.entradas.reduce((acc: number, curr: any) => acc + (Number(curr.haber) || 0), 0);
+          
+          if (Math.abs(d - h) < 0.01) {
+            const newVoucher: Voucher = {
+              ...v,
+              companyId,
+              id: v.id || `vou-json-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              numero: vouchers.length + importedCount + 1
+            };
+            onAddVoucher(newVoucher);
+            importedCount++;
+          } else {
+            console.warn(`Voucher ${v.numero || ''} no está cuadrado (D:${d}, H:${h}).`);
+          }
+        }
+      });
+
+      if (importedCount > 0) {
+        alert(`Se importaron ${importedCount} comprobantes exitosamente.`);
+      } else {
+        alert("No se encontraron comprobantes válidos y cuadrados en el archivo.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error al procesar el archivo JSON. Verifique el formato.");
+    }
+    e.target.value = '';
+  };
+
   const resetForm = () => {
     setGlosa('');
     setEntries([{ cuenta: '', glosa: '', debe: 0, haber: 0 }, { cuenta: '', glosa: '', debe: 0, haber: 0 }]);
@@ -51,14 +96,20 @@ export const VoucherManager: React.FC<Props> = ({ vouchers, companyId, onAddVouc
         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
           <FileSpreadsheet className="w-6 h-6 text-blue-600" /> Movimientos de Voucher
         </h2>
-        {!isAdding && (
-          <button 
-            onClick={() => setIsAdding(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all"
-          >
-            <Plus className="w-4 h-4" /> Nuevo Voucher
-          </button>
-        )}
+        <div className="flex gap-2">
+          <label className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer transition-all border border-slate-300">
+            <FileJson className="w-4 h-4" /> Importar Centralización
+            <input type="file" accept=".json" onChange={handleImportJSON} className="hidden" />
+          </label>
+          {!isAdding && (
+            <button 
+              onClick={() => setIsAdding(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg transition-all"
+            >
+              <Plus className="w-4 h-4" /> Nuevo Voucher
+            </button>
+          )}
+        </div>
       </div>
 
       {isAdding && (

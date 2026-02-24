@@ -99,6 +99,10 @@ const runInitialMigrations = (database: any) => {
     CREATE TABLE IF NOT EXISTS entities (id TEXT PRIMARY KEY, companyId TEXT, rut TEXT, razonSocial TEXT, giro TEXT, tipo TEXT);
     CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT);
     CREATE TABLE IF NOT EXISTS ledger_entries (id TEXT PRIMARY KEY, voucher_id TEXT, account_id TEXT, entity_id TEXT, glosa TEXT, debe REAL, haber REAL);
+    CREATE TABLE IF NOT EXISTS bank_statements (id TEXT PRIMARY KEY, companyId TEXT, fecha TEXT, descripcion TEXT, monto REAL, referencia TEXT, matchedVoucherId TEXT);
+    CREATE TABLE IF NOT EXISTS assets (id TEXT PRIMARY KEY, companyId TEXT, nombre TEXT, fechaCompra TEXT, valorCompra REAL, vidaUtilMeses INTEGER, depreciacionAcumulada REAL, valorLibro REAL);
+    CREATE TABLE IF NOT EXISTS ppm_config (id TEXT PRIMARY KEY, companyId TEXT, periodo TEXT, tasa REAL);
+    CREATE TABLE IF NOT EXISTS payslips (id TEXT PRIMARY KEY, companyId TEXT, periodo TEXT, rut TEXT, nombre TEXT, sueldoBase REAL, gratificacion REAL, otrosHaberes REAL, totalHaberes REAL, leyesSociales REAL, impuestoUnico REAL, otrosDescuentos REAL, totalDescuentos REAL, alcanceLiquido REAL);
     
     -- Índices para optimización de consultas
     CREATE INDEX IF NOT EXISTS idx_accounts_company ON accounts(companyId);
@@ -106,6 +110,7 @@ const runInitialMigrations = (database: any) => {
     CREATE INDEX IF NOT EXISTS idx_ledger_entries_voucher ON ledger_entries(voucher_id);
     CREATE INDEX IF NOT EXISTS idx_ledger_entries_account ON ledger_entries(account_id);
     CREATE INDEX IF NOT EXISTS idx_entities_company ON entities(companyId);
+    CREATE INDEX IF NOT EXISTS idx_payslips_company_rut ON payslips(companyId, rut);
   `);
   persistDB();
 };

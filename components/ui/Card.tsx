@@ -8,9 +8,10 @@ interface CardProps {
   subtitle?: string;
   icon?: React.ReactNode;
   footer?: React.ReactNode;
+  headerActions?: React.ReactNode;
 }
 
-export const Card: React.FC<CardProps> = ({ children, className = '', title, subtitle, icon, footer }) => {
+export const Card: React.FC<CardProps> = ({ children, className = '', title, subtitle, icon, footer, headerActions }) => {
   return (
     <div className={`bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden ${className}`}>
       {(title || icon) && (
@@ -22,6 +23,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', title, sub
               {subtitle && <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{subtitle}</p>}
             </div>
           </div>
+          {headerActions && <div>{headerActions}</div>}
         </div>
       )}
       <div className="p-6">

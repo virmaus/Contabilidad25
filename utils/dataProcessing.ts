@@ -1,6 +1,6 @@
 
 // Added missing PayrollEntry import
-import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, CompanyConfig, PayrollEntry, ProfitAndLoss } from '../types';
+import { Transaction, KpiStats, TransactionType, BalanceAccount, CompanyMeta, Voucher, Account, CompanyConfig, PayrollEntry, ProfitAndLoss, Payslip } from '../types';
 import { calculateVaR } from './financialCalculations';
 
 const detectSeparator = (line: string): string => {
@@ -73,6 +73,15 @@ export interface ParseResult {
   summary: { total: number; processed: number; rejected: number };
 }
 
+export interface PayrollImportResult {
+  summary: PayrollEntry;
+  payslips: Payslip[];
+  report: {
+    errors: string[];
+    warnings: string[];
+  };
+}
+
 export const parseCSV = (csvText: string, filename: string, companyId: string = ''): ParseResult => {
   const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
   if (lines.length < 2) return { data: [], errors: [], summary: { total: 0, processed: 0, rejected: 0 } };
@@ -85,7 +94,8 @@ export const parseCSV = (csvText: string, filename: string, companyId: string = 
   const errors: { line: number; reason: string; raw: string }[] = [];
 
   if (headers.includes('sueldobase') || headers.includes('costoempresa') || filename.toLowerCase().includes('centralizacion')) {
-    data = [parsePayrollCSV(lines.slice(headerIndex), headers, separator, companyId)];
+    const payrollResult = parsePayrollCSV(lines.slice(headerIndex), headers, separator, companyId);
+    data = [{ ...payrollResult, type: 'payroll' }];
   } else if (headers.includes('activo') && headers.includes('pasivo')) {
     data = parseBalanceCSV(lines.slice(headerIndex), headers, separator);
   } else {
@@ -114,15 +124,25 @@ const findHeaderRow = (lines: string[]): number => {
   return 0;
 };
 
-const parsePayrollCSV = (lines: string[], headers: string[], separator: string, companyId: string = ''): PayrollEntry => {
+const parsePayrollCSV = (lines: string[], headers: string[], separator: string, companyId: string = ''): PayrollImportResult => {
   const getVal = (name: string, row: string[]) => {
     const idx = headers.indexOf(normalizeHeader(name));
     if (idx === -1) return 0;
     return parseFloat(row[idx]?.replace(/\./g, '').replace(',', '.')) || 0;
   };
 
+  const getStr = (name: string, row: string[]) => {
+    const idx = headers.indexOf(normalizeHeader(name));
+    if (idx === -1) return '';
+    return row[idx]?.trim() || '';
+  };
+
   const currentPeriodo = new Date().toISOString().substring(0, 7);
-  let totals: PayrollEntry = {
+  const payslips: Payslip[] = [];
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  let summary: PayrollEntry = {
     id: `payroll-${companyId}-${currentPeriodo}-${Date.now()}`,
     companyId,
     periodo: currentPeriodo,
@@ -133,16 +153,69 @@ const parsePayrollCSV = (lines: string[], headers: string[], separator: string, 
   for (let i = 1; i < lines.length; i++) {
     const row = lines[i].split(separator);
     if (row.length < headers.length * 0.5) continue;
-    totals.sueldoBase += getVal('sueldobase', row);
-    totals.gratificacion += getVal('gratificacion', row);
-    totals.leyesSociales += getVal('leyessociales', row) || getVal('afp', row) + getVal('isapre', row);
-    totals.sis += getVal('sis', row);
-    totals.mutual += getVal('mutual', row);
-    totals.impuestoUnico += getVal('impuestounico', row);
-    totals.sueldoLiquido += getVal('sueldoliquido', row) || getVal('alcance liquido', row);
-    totals.costoEmpresa += getVal('costoempresa', row) || getVal('total costo', row);
+
+    const rawRut = getStr('rut', row);
+    const nombre = getStr('nombre', row) || getStr('empleado', row) || 'S/N';
+    
+    if (!rawRut) {
+      errors.push(`Línea ${i + 1}: RUT ausente.`);
+      continue;
+    }
+
+    if (!validateRut(rawRut)) {
+      warnings.push(`Línea ${i + 1}: RUT ${rawRut} inválido.`);
+    }
+
+    const rut = normalizeRut(rawRut);
+    const sueldoBase = getVal('sueldobase', row);
+    const gratificacion = getVal('gratificacion', row);
+    const afp = getVal('afp', row);
+    const salud = getVal('salud', row) || getVal('isapre', row) || getVal('fonasa', row);
+    const leyesSociales = afp + salud || getVal('leyessociales', row);
+    const impuestoUnico = getVal('impuestounico', row);
+    const sueldoLiquido = getVal('sueldoliquido', row) || getVal('alcance liquido', row);
+    const otrosHaberes = getVal('otroshaberes', row) || getVal('bonos', row);
+    const otrosDescuentos = getVal('otrosdescuentos', row);
+
+    const totalHaberes = sueldoBase + gratificacion + otrosHaberes;
+    const totalDescuentos = leyesSociales + impuestoUnico + otrosDescuentos;
+
+    // Validación básica de cuadratura por empleado
+    if (Math.abs(totalHaberes - totalDescuentos - sueldoLiquido) > 10) {
+      warnings.push(`Línea ${i + 1} (${rut}): Discrepancia en cálculo de líquido (Haberes: ${totalHaberes}, Descuentos: ${totalDescuentos}, Líquido: ${sueldoLiquido}).`);
+    }
+
+    const payslip: Payslip = {
+      id: `ps-${companyId}-${rut}-${currentPeriodo}`,
+      companyId,
+      periodo: currentPeriodo,
+      rut,
+      nombre,
+      sueldoBase,
+      gratificacion,
+      otrosHaberes,
+      totalHaberes,
+      leyesSociales,
+      impuestoUnico,
+      otrosDescuentos,
+      totalDescuentos,
+      alcanceLiquido: sueldoLiquido
+    };
+
+    payslips.push(payslip);
+
+    // Update summary
+    summary.sueldoBase += sueldoBase;
+    summary.gratificacion += gratificacion;
+    summary.leyesSociales += leyesSociales;
+    summary.sis += getVal('sis', row);
+    summary.mutual += getVal('mutual', row);
+    summary.impuestoUnico += impuestoUnico;
+    summary.sueldoLiquido += sueldoLiquido;
+    summary.costoEmpresa += getVal('costoempresa', row) || (totalHaberes + getVal('sis', row) + getVal('mutual', row));
   }
-  return totals;
+
+  return { summary, payslips, report: { errors, warnings } };
 };
 
 const parseBalanceCSV = (lines: string[], headers: string[], separator: string): BalanceAccount[] => {
@@ -267,7 +340,13 @@ const parseTransactionCSVWithErrors = (lines: string[], headers: string[], separ
 export const processTransactions = (data: any[], vouchers: Voucher[] = [], accounts: Account[] = [], company?: CompanyConfig | null): KpiStats => {
   const txs = data.filter(d => 'type' in d && d.type !== 'remuneracion') as Transaction[];
   const balanceFromFile = data.filter(d => 'activo' in d) as BalanceAccount[];
-  const payroll = data.find(d => 'costoEmpresa' in d) as PayrollEntry | undefined;
+  
+  // Handle both old and new payroll structure
+  let payroll: PayrollEntry | undefined;
+  const payrollData = data.find(d => 'costoEmpresa' in d || 'summary' in d);
+  if (payrollData) {
+    payroll = 'summary' in payrollData ? payrollData.summary : payrollData;
+  }
 
   let ts = 0, tp = 0;
   const timeMap = new Map<string, { sales: number; purchases: number }>();

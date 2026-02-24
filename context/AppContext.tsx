@@ -4,7 +4,10 @@ import { CompanyConfig, Account, Transaction, KpiStats } from '../types';
 import { 
   getCompanies, 
   getAccounts, 
-  getVouchersWithEntries 
+  getVouchersWithEntries,
+  getBankStatements,
+  getAssets,
+  getPpmConfigs
 } from '../utils/db';
 import { processTransactions } from '../utils/dataProcessing';
 
@@ -19,6 +22,12 @@ interface AppContextType {
   setAccounts: React.Dispatch<React.SetStateAction<Account[]>>;
   vouchers: any[];
   setVouchers: React.Dispatch<React.SetStateAction<any[]>>;
+  bankStatements: any[];
+  setBankStatements: React.Dispatch<React.SetStateAction<any[]>>;
+  assets: any[];
+  setAssets: React.Dispatch<React.SetStateAction<any[]>>;
+  ppmConfigs: any[];
+  setPpmConfigs: React.Dispatch<React.SetStateAction<any[]>>;
   isDBLoading: boolean;
   kpis: KpiStats;
   refreshCompanies: () => void;
@@ -33,6 +42,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [vouchers, setVouchers] = useState<any[]>([]);
+  const [bankStatements, setBankStatements] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
+  const [ppmConfigs, setPpmConfigs] = useState<any[]>([]);
   const [isDBLoading, setIsDBLoading] = useState(true);
 
   const refreshCompanies = () => {
@@ -47,6 +59,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (companyId) {
       setAccounts(getAccounts(companyId));
       setVouchers(getVouchersWithEntries(companyId));
+      setBankStatements(getBankStatements(companyId));
+      setAssets(getAssets(companyId));
+      setPpmConfigs(getPpmConfigs(companyId));
       localStorage.setItem('selectedCompanyId', companyId);
     }
   };
@@ -84,6 +99,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAccounts,
     vouchers,
     setVouchers,
+    bankStatements,
+    setBankStatements,
+    assets,
+    setAssets,
+    ppmConfigs,
+    setPpmConfigs,
     isDBLoading,
     kpis,
     refreshCompanies,

@@ -117,6 +117,23 @@ export interface PayrollEntry {
   costoEmpresa: number;
 }
 
+export interface Payslip {
+  id: string;
+  companyId: string;
+  periodo: string;
+  rut: string;
+  nombre: string;
+  sueldoBase: number;
+  gratificacion: number;
+  otrosHaberes: number;
+  totalHaberes: number;
+  leyesSociales: number; // AFP + Salud
+  impuestoUnico: number;
+  otrosDescuentos: number;
+  totalDescuentos: number;
+  alcanceLiquido: number;
+}
+
 export interface CostCenter {
   id: string;
   companyId: string;

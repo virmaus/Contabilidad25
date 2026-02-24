@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Transaction, Voucher, KpiStats } from '../types';
 import { formatCurrency } from '../utils/dataProcessing';
-import { Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar } from 'lucide-react';
+import { Wallet, ArrowUpCircle, ArrowDownCircle, TrendingUp, Calendar, PieChart } from 'lucide-react';
+import { Card } from './ui/Card';
 
 interface Props {
   transactions: Transaction[];
@@ -9,7 +10,9 @@ interface Props {
   kpis: KpiStats;
 }
 
-export const Tesoreria: React.FC<Props> = ({ transactions, vouchers }) => {
+export const Tesoreria: React.FC<Props> = ({ transactions, vouchers, kpis }) => {
+  const { accounts } = kpis;
+
   const cashFlow = useMemo(() => {
     const months: Record<string, { in: number; out: number; net: number }> = {};
 
@@ -44,6 +47,10 @@ export const Tesoreria: React.FC<Props> = ({ transactions, vouchers }) => {
       .sort((a, b) => b.month.localeCompare(a.month));
   }, [transactions, vouchers]);
 
+  const cashAccounts = useMemo(() => {
+    return accounts.filter(a => a.codigo.startsWith('1.01') && a.imputable);
+  }, [accounts]);
+
   const totals = useMemo(() => {
     return cashFlow.reduce((acc, curr) => ({
       in: acc.in + curr.in,
@@ -55,94 +62,126 @@ export const Tesoreria: React.FC<Props> = ({ transactions, vouchers }) => {
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center gap-4">
-            <div className="bg-emerald-100 p-3 rounded-xl text-emerald-600">
-              <ArrowUpCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Ingresos</p>
-              <p className="text-2xl font-black text-slate-900">{formatCurrency(totals.in)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center gap-4">
-            <div className="bg-red-100 p-3 rounded-xl text-red-600">
-              <ArrowDownCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Egresos</p>
-              <p className="text-2xl font-black text-slate-900">{formatCurrency(totals.out)}</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center gap-4">
-            <div className="bg-blue-100 p-3 rounded-xl text-blue-600">
-              <TrendingUp className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flujo Neto</p>
-              <p className={`text-2xl font-black ${totals.net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                {formatCurrency(totals.net)}
-              </p>
-            </div>
-          </div>
-        </div>
+        <Card
+          title="Total Ingresos"
+          subtitle="Acumulado histórico"
+          icon={<ArrowUpCircle className="w-6 h-6 text-emerald-600" />}
+        >
+          <p className="text-3xl font-black text-slate-900">{formatCurrency(totals.in)}</p>
+        </Card>
+
+        <Card
+          title="Total Egresos"
+          subtitle="Acumulado histórico"
+          icon={<ArrowDownCircle className="w-6 h-6 text-red-600" />}
+        >
+          <p className="text-3xl font-black text-slate-900">{formatCurrency(totals.out)}</p>
+        </Card>
+
+        <Card
+          title="Flujo Neto"
+          subtitle="Saldo consolidado"
+          icon={<TrendingUp className="w-6 h-6 text-blue-600" />}
+        >
+          <p className={`text-3xl font-black ${totals.net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            {formatCurrency(totals.net)}
+          </p>
+        </Card>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Wallet className="w-6 h-6 text-blue-400" />
-            <div>
-              <h2 className="text-xl font-bold uppercase tracking-tight">Control de Tesorería</h2>
-              <p className="text-slate-400 text-xs mt-1">Flujo de caja mensual consolidado (Ventas, Compras y Vouchers).</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card
+            title="Control de Tesorería"
+            subtitle="Flujo de caja mensual consolidado"
+            icon={<Wallet className="w-6 h-6 text-blue-500" />}
+          >
+            <div className="overflow-x-auto -mx-6">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-black uppercase text-[10px] tracking-widest">
+                  <tr className="border-b border-slate-100">
+                    <th className="px-6 py-4">Periodo</th>
+                    <th className="px-6 py-4 text-right">Ingresos (+)</th>
+                    <th className="px-6 py-4 text-right">Egresos (-)</th>
+                    <th className="px-6 py-4 text-right">Neto</th>
+                    <th className="px-6 py-4 text-center">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {cashFlow.map((row) => (
+                    <tr key={row.month} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 font-black text-slate-800 flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-slate-300" />
+                        {row.month}
+                      </td>
+                      <td className="px-6 py-4 text-right text-emerald-600 font-mono font-bold">
+                        {formatCurrency(row.in)}
+                      </td>
+                      <td className="px-6 py-4 text-right text-red-600 font-mono font-bold">
+                        {formatCurrency(row.out)}
+                      </td>
+                      <td className={`px-6 py-4 text-right font-black font-mono ${row.net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                        {formatCurrency(row.net)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-tighter ${
+                          row.net >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {row.net >= 0 ? 'Superávit' : 'Déficit'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {cashFlow.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                        No hay movimientos registrados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
-          </div>
+          </Card>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-[11px]">
-              <tr className="border-b border-slate-200">
-                <th className="px-6 py-4">Periodo</th>
-                <th className="px-6 py-4 text-right">Ingresos (+)</th>
-                <th className="px-6 py-4 text-right">Egresos (-)</th>
-                <th className="px-6 py-4 text-right">Resultado Neto</th>
-                <th className="px-6 py-4 text-center">Estado</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {cashFlow.map((row) => (
-                <tr key={row.month} className="hover:bg-slate-50 transition-colors">
-                  <td className="px-6 py-4 font-black text-slate-800 flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    {row.month}
-                  </td>
-                  <td className="px-6 py-4 text-right text-emerald-600 font-mono">
-                    {formatCurrency(row.in)}
-                  </td>
-                  <td className="px-6 py-4 text-right text-red-600 font-mono">
-                    {formatCurrency(row.out)}
-                  </td>
-                  <td className={`px-6 py-4 text-right font-black font-mono ${row.net >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                    {formatCurrency(row.net)}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${
-                      row.net >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {row.net >= 0 ? 'Superávit' : 'Déficit'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="lg:col-span-1">
+          <Card
+            title="Disponibilidad"
+            subtitle="Saldos por cuenta de efectivo"
+            icon={<PieChart className="w-6 h-6 text-indigo-500" />}
+          >
+            <div className="space-y-4">
+              {cashAccounts.length > 0 ? cashAccounts.map(account => {
+                // Calculate current balance for this account from vouchers
+                const balance = vouchers.reduce((sum, v) => {
+                  return sum + v.entradas
+                    .filter((e: any) => e.cuenta === account.nombre || e.cuenta.includes(account.codigo))
+                    .reduce((s: number, e: any) => s + (e.debe - e.haber), 0);
+                }, 0);
+
+                return (
+                  <div key={account.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{account.codigo}</p>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-black uppercase ${balance >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        {balance >= 0 ? 'OK' : 'SOBREGIRO'}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-800 truncate mb-1">{account.nombre}</p>
+                    <p className="text-xl font-black text-slate-900 font-mono">{formatCurrency(balance)}</p>
+                  </div>
+                );
+              }) : (
+                <div className="py-12 text-center text-slate-400 uppercase text-[10px] font-black tracking-widest">
+                  No se detectaron cuentas de efectivo
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>
   );
 };
+

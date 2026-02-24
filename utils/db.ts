@@ -81,6 +81,67 @@ export const deleteCompany = (companyId: string) => {
   executeRun("DELETE FROM companies WHERE id = ?", [companyId]);
 };
 
+// --- CRUD BANK STATEMENTS ---
+export const getBankStatements = (companyId: string) => {
+  return executeQuery("SELECT * FROM bank_statements WHERE companyId = ? ORDER BY fecha DESC", [companyId]);
+};
+
+export const saveBankStatement = (entry: any) => {
+  executeRun(
+    "INSERT OR REPLACE INTO bank_statements (id, companyId, fecha, descripcion, monto, referencia, matchedVoucherId) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    [entry.id, entry.companyId, entry.fecha, entry.descripcion, entry.monto, entry.referencia, entry.matchedVoucherId]
+  );
+};
+
+// --- CRUD ASSETS ---
+export const getAssets = (companyId: string) => {
+  return executeQuery("SELECT * FROM assets WHERE companyId = ?", [companyId]);
+};
+
+export const saveAsset = (asset: any) => {
+  executeRun(
+    "INSERT OR REPLACE INTO assets (id, companyId, nombre, fechaCompra, valorCompra, vidaUtilMeses, depreciacionAcumulada, valorLibro) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    [asset.id, asset.companyId, asset.nombre, asset.fechaCompra, asset.valorCompra, asset.vidaUtilMeses, asset.depreciacionAcumulada, asset.valorLibro]
+  );
+};
+
+export const deleteAsset = (id: string) => {
+  executeRun("DELETE FROM assets WHERE id = ?", [id]);
+};
+
+// --- CRUD PPM CONFIG ---
+export const getPpmConfigs = (companyId: string) => {
+  return executeQuery("SELECT * FROM ppm_config WHERE companyId = ?", [companyId]);
+};
+
+export const savePpmConfig = (config: any) => {
+  executeRun(
+    "INSERT OR REPLACE INTO ppm_config (id, companyId, periodo, tasa) VALUES (?, ?, ?, ?)",
+    [config.id, config.companyId, config.periodo, config.tasa]
+  );
+};
+
+// --- CRUD PAYSLIPS ---
+export const getPayslipsByEmployee = (companyId: string, rut: string) => {
+  return executeQuery("SELECT * FROM payslips WHERE companyId = ? AND rut = ? ORDER BY periodo DESC", [companyId, rut]);
+};
+
+export const getPayslipsByPeriod = (companyId: string, periodo: string) => {
+  return executeQuery("SELECT * FROM payslips WHERE companyId = ? AND periodo = ?", [companyId, periodo]);
+};
+
+export const savePayslip = (payslip: any) => {
+  executeRun(
+    "INSERT OR REPLACE INTO payslips (id, companyId, periodo, rut, nombre, sueldoBase, gratificacion, otrosHaberes, totalHaberes, leyesSociales, impuestoUnico, otrosDescuentos, totalDescuentos, alcanceLiquido) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    [
+      payslip.id, payslip.companyId, payslip.periodo, payslip.rut, payslip.nombre,
+      payslip.sueldoBase, payslip.gratificacion, payslip.otrosHaberes, payslip.totalHaberes,
+      payslip.leyesSociales, payslip.impuestoUnico, payslip.otrosDescuentos, payslip.totalDescuentos,
+      payslip.alcanceLiquido
+    ]
+  );
+};
+
 export const clearDatabase = () => {
   if (confirm("¿Estás seguro de borrar TODA la base de datos?")) {
     clearFullDatabase();
