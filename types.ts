@@ -55,6 +55,8 @@ export interface Voucher {
   glosaGeneral: string;
   created_at?: string;
   entradas: VoucherEntry[];
+  periodo?: string;
+  hash?: string;
 }
 
 export interface LedgerEntry {

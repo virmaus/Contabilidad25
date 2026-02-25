@@ -97,7 +97,7 @@ const runInitialMigrations = (database: any) => {
     CREATE TABLE IF NOT EXISTS companies (id TEXT PRIMARY KEY, rut TEXT, razonSocial TEXT, direccion TEXT, comuna TEXT, giro TEXT, periodo TEXT, regimen TEXT);
     CREATE TABLE IF NOT EXISTS accounts (id TEXT PRIMARY KEY, companyId TEXT, parentId TEXT, codigo TEXT, nombre TEXT, imputable INTEGER, tipo TEXT, nivel INTEGER, efectivoPos TEXT, efectivoNeg TEXT);
     CREATE TABLE IF NOT EXISTS entities (id TEXT PRIMARY KEY, companyId TEXT, rut TEXT, razonSocial TEXT, giro TEXT, tipo TEXT);
-    CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT);
+    CREATE TABLE IF NOT EXISTS vouchers (id TEXT PRIMARY KEY, companyId TEXT, numero INTEGER, fecha TEXT, tipo TEXT, glosaGeneral TEXT, periodo TEXT, hash TEXT);
     CREATE TABLE IF NOT EXISTS ledger_entries (id TEXT PRIMARY KEY, voucher_id TEXT, account_id TEXT, entity_id TEXT, glosa TEXT, debe REAL, haber REAL);
     CREATE TABLE IF NOT EXISTS bank_statements (id TEXT PRIMARY KEY, companyId TEXT, fecha TEXT, descripcion TEXT, monto REAL, referencia TEXT, matchedVoucherId TEXT);
     CREATE TABLE IF NOT EXISTS assets (id TEXT PRIMARY KEY, companyId TEXT, nombre TEXT, fechaCompra TEXT, valorCompra REAL, vidaUtilMeses INTEGER, depreciacionAcumulada REAL, valorLibro REAL);
@@ -106,11 +106,22 @@ const runInitialMigrations = (database: any) => {
     
     -- Índices para optimización de consultas
     CREATE INDEX IF NOT EXISTS idx_accounts_company ON accounts(companyId);
+    CREATE INDEX IF NOT EXISTS idx_accounts_codigo ON accounts(codigo);
     CREATE INDEX IF NOT EXISTS idx_vouchers_company ON vouchers(companyId);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_fecha ON vouchers(fecha);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_periodo ON vouchers(periodo);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_hash ON vouchers(hash);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_vouchers_dedup ON vouchers(companyId, periodo, tipo, hash);
+    
     CREATE INDEX IF NOT EXISTS idx_ledger_entries_voucher ON ledger_entries(voucher_id);
     CREATE INDEX IF NOT EXISTS idx_ledger_entries_account ON ledger_entries(account_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_bank_statements_company ON bank_statements(companyId);
+    CREATE INDEX IF NOT EXISTS idx_bank_statements_fecha ON bank_statements(fecha);
+    
     CREATE INDEX IF NOT EXISTS idx_entities_company ON entities(companyId);
     CREATE INDEX IF NOT EXISTS idx_payslips_company_rut ON payslips(companyId, rut);
+    CREATE INDEX IF NOT EXISTS idx_payslips_periodo ON payslips(periodo);
   `);
   persistDB();
 };
